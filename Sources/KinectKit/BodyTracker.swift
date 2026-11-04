@@ -18,6 +18,12 @@ public struct Body: Sendable, Equatable {
     public var index: Int
     public var joints: [BodyJoint]
     public var deviceTimestampMicroseconds: UInt64
+    /// Colour-pixel bounding box (x, y, width, height) from the person detector.
+    public var boundingBox: SIMD4<Float>?
+    /// "pose" when joints came from the pose detector, "rect" when only the
+    /// person detector saw someone (partly out of frame, blurred): then the
+    /// single joint is "center", the box centre lifted with depth.
+    public var source: String
 }
 
 public final class BodyTracker: @unchecked Sendable {
@@ -69,10 +75,17 @@ public final class BodyTracker: @unchecked Sendable {
                                                   color.bytes.baseAddress!, color.strideBytes, nil, nil, nil, &pixelBuffer)
         guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return [] }
         let request = VNDetectHumanBodyPoseRequest()
+        let people = VNDetectHumanRectanglesRequest()
+        people.upperBodyOnly = true
         let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .up, options: [:])
-        do { try handler.perform([request]) } catch { return [] }
-        guard let observations = request.results else { return [] }
+        do { try handler.perform([request, people]) } catch { return [] }
+        let observations = request.results ?? []
         var bodies: [Body] = []
+        func pixelBox(_ box: CGRect) -> SIMD4<Float> {
+            // Vision's boxes are normalised with a bottom-left origin.
+            SIMD4(Float(box.minX) * Float(color.width), Float(1 - box.maxY) * Float(color.height),
+                  Float(box.width) * Float(color.width), Float(box.height) * Float(color.height))
+        }
         for (index, observation) in observations.enumerated() {
             guard let points = try? observation.recognizedPoints(.all) else { continue }
             var joints: [BodyJoint] = []
@@ -85,8 +98,28 @@ public final class BodyTracker: @unchecked Sendable {
                 joints.append(BodyJoint(name: name, confidence: Float(point.confidence), colorPixel: pixel, position: position))
             }
             if !joints.isEmpty {
-                bodies.append(Body(index: index, joints: joints, deviceTimestampMicroseconds: timestamp))
+                // The person box that overlaps this pose, if the detector found one.
+                let xs = joints.map { $0.colorPixel.x }, ys = joints.map { $0.colorPixel.y }
+                let centre = CGPoint(x: Double(xs.reduce(0, +) / Float(xs.count)) / Double(color.width),
+                                     y: 1 - Double(ys.reduce(0, +) / Float(ys.count)) / Double(color.height))
+                let box = (people.results ?? []).first { $0.boundingBox.contains(centre) }.map { pixelBox($0.boundingBox) }
+                bodies.append(Body(index: index, joints: joints, deviceTimestampMicroseconds: timestamp, boundingBox: box, source: "pose"))
             }
+        }
+        // People the pose detector could not resolve (partly out of frame, blurred)
+        // still count: one body with a centre joint and the box.
+        for person in people.results ?? [] where person.confidence > 0.3 {
+            let box = person.boundingBox
+            let alreadyPosed = bodies.contains { body in
+                body.joints.contains { joint in
+                    box.contains(CGPoint(x: Double(joint.colorPixel.x) / Double(color.width), y: 1 - Double(joint.colorPixel.y) / Double(color.height)))
+                }
+            }
+            if alreadyPosed { continue }
+            let pixel = SIMD2<Float>(Float(box.midX) * Float(color.width), Float(1 - box.midY) * Float(color.height))
+            let position = depth.flatMap { lift(pixel: pixel, depth: $0) }
+            let joint = BodyJoint(name: "center", confidence: Float(person.confidence), colorPixel: pixel, position: position)
+            bodies.append(Body(index: bodies.count, joints: [joint], deviceTimestampMicroseconds: timestamp, boundingBox: pixelBox(box), source: "rect"))
         }
         return bodies
     }
@@ -126,9 +159,15 @@ public final class BodyTracker: @unchecked Sendable {
     ///   /kinect/bodies            count
     ///   /kinect/body/<i>/<joint>  x y z confidence   (mm, depth camera frame; z = 0 when unknown)
     ///   /kinect/body/<i>/<joint>/pixel  u v         (colour pixels)
+    ///   /kinect/body/<i>/bbox       x y w h           (colour pixels, when the person detector saw the body)
+    ///   /kinect/body/<i>/source     "pose" | "rect"
     public static func oscBundle(_ bodies: [Body]) -> Data {
         var messages = [OSC.message("/kinect/bodies", [.int(Int32(bodies.count))])]
         for body in bodies {
+            messages.append(OSC.message("/kinect/body/\(body.index)/source", [.string(body.source)]))
+            if let box = body.boundingBox {
+                messages.append(OSC.message("/kinect/body/\(body.index)/bbox", [.float(box.x), .float(box.y), .float(box.z), .float(box.w)]))
+            }
             for joint in body.joints {
                 let p = joint.position ?? SIMD3<Float>(0, 0, 0)
                 messages.append(OSC.message("/kinect/body/\(body.index)/\(joint.name)", [.float(p.x), .float(p.y), .float(p.z), .float(joint.confidence)]))

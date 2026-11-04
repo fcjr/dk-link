@@ -52,8 +52,27 @@ final class BodyTrackerTests: XCTestCase {
             XCTAssertGreaterThan(lifted.z, 100)
             XCTAssertLessThan(lifted.z, 10000)
         }
-        let bundle = BodyTracker.oscBundle([Body(index: 0, joints: [BodyJoint(name: "nose", confidence: 0.9, colorPixel: SIMD2(1, 2), position: SIMD3(10, 20, 30))], deviceTimestampMicroseconds: 5)])
+        let bundle = BodyTracker.oscBundle([Body(index: 0, joints: [BodyJoint(name: "nose", confidence: 0.9, colorPixel: SIMD2(1, 2), position: SIMD3(10, 20, 30))], deviceTimestampMicroseconds: 5, boundingBox: nil, source: "pose")])
         XCTAssertTrue(bundle.count > 40)
         XCTAssertEqual(Array(bundle.prefix(7)), Array("#bundle".utf8))
+    }
+}
+
+
+final class BodyTrackerFrameTests: XCTestCase {
+    /// Runs the tracker on a saved 1280x720 BGRA frame named by KINECT_BODY_FRAME, for checking detections by hand.
+    func testSavedFrame() throws {
+        guard let path = ProcessInfo.processInfo.environment["KINECT_BODY_FRAME"] else { throw XCTSkip("set KINECT_BODY_FRAME") }
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let color = KinectImage.allocate(format: K4A_IMAGE_FORMAT_COLOR_BGRA32, width: 1280, height: 720, strideBytes: 1280 * 4)!
+        data.withUnsafeBytes { memcpy(color.bytes.baseAddress!, $0.baseAddress!, min($0.count, color.byteCount)) }
+        let json = PipelineTests.fixture("calibration.json")
+        var text = [CChar](repeating: 0, count: json.count + 1)
+        json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+        var calibration = k4a_calibration_t()
+        _ = k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration)
+        let bodies = BodyTracker(calibration: calibration).track(color: color, depth: nil, timestamp: 0)
+        print("saved frame: \(bodies.count) bodies: " + bodies.map { "\($0.source) \($0.joints.count) joints box \($0.boundingBox.map { "\($0)" } ?? "-")" }.joined(separator: "; "))
+        XCTAssertGreaterThan(bodies.count, 0)
     }
 }
