@@ -51,6 +51,7 @@ final class AppModel: ObservableObject {
     @Published var lastIMU: IMUSample?
     @Published var bodyCount = 0
     @Published var bodyMilliseconds: Double = 0
+    @Published var bodies: [Body] = []
     private var bodyTracker: BodyTracker?
     private var osc: OSCSender?
 
@@ -160,6 +161,7 @@ final class AppModel: ObservableObject {
                 Task { @MainActor in
                     self?.bodyCount = bodies.count
                     self?.bodyMilliseconds = milliseconds
+                    self?.bodies = bodies
                 }
             }
             bodyTracker = tracker
@@ -215,6 +217,7 @@ final class AppModel: ObservableObject {
         osc = nil
         bodyTracker = nil
         bodyCount = 0
+        bodies = []
         if let device {
             state = .idle(serial: device.serialNumber)
         } else {

@@ -125,6 +125,9 @@ struct PreviewWindow: View {
     private func pane(_ stream: SyphonOutput.Stream) -> some View {
         ZStack(alignment: .bottomLeading) {
             TexturePreview(frames: model.previewFrames, stream: stream, device: model.metalDevice)
+            if stream == .color, model.output.bodyTracking, !model.bodies.isEmpty {
+                BodyOverlay(bodies: model.bodies, imageSize: model.configuration.colorResolution.size)
+            }
             if let note = note(for: stream) {
                 Text(note)
                     .font(.caption)
@@ -158,5 +161,66 @@ struct PreviewWindow: View {
         ForEach([SyphonOutput.Stream.color, .depthPreview, .depth, .ir], id: \.self) { stream in
             Text(stream == .depth ? "Depth (packed 16-bit)" : stream.rawValue).tag(stream)
         }
+    }
+}
+
+
+/// Joints, bones and boxes over the colour pane, in the same letterboxed
+/// placement the Metal view uses for the image.
+struct BodyOverlay: View {
+    let bodies: [Body]
+    let imageSize: (width: Int, height: Int)
+
+    static let bones: [(String, String)] = [
+        ("nose", "neck"), ("neck", "shoulder_left"), ("neck", "shoulder_right"),
+        ("shoulder_left", "elbow_left"), ("elbow_left", "wrist_left"),
+        ("shoulder_right", "elbow_right"), ("elbow_right", "wrist_right"),
+        ("neck", "pelvis"), ("pelvis", "hip_left"), ("pelvis", "hip_right"),
+        ("hip_left", "knee_left"), ("knee_left", "ankle_left"),
+        ("hip_right", "knee_right"), ("knee_right", "ankle_right"),
+        ("nose", "eye_left"), ("nose", "eye_right"), ("eye_left", "ear_left"), ("eye_right", "ear_right"),
+    ]
+    static let palette: [Color] = [.green, .orange, .cyan, .pink, .yellow, .purple]
+
+    var body: some View {
+        GeometryReader { geometry in
+            Canvas { context, size in
+                guard imageSize.width > 0, imageSize.height > 0 else { return }
+                let viewAspect = size.width / max(size.height, 1)
+                let imageAspect = CGFloat(imageSize.width) / CGFloat(imageSize.height)
+                var drawn = size
+                if imageAspect > viewAspect { drawn.height = size.width / imageAspect } else { drawn.width = size.height * imageAspect }
+                let origin = CGPoint(x: (size.width - drawn.width) / 2, y: (size.height - drawn.height) / 2)
+                let scale = drawn.width / CGFloat(imageSize.width)
+                func place(_ p: SIMD2<Float>) -> CGPoint {
+                    CGPoint(x: origin.x + CGFloat(p.x) * scale, y: origin.y + CGFloat(p.y) * scale)
+                }
+                for body in bodies {
+                    let color = BodyOverlay.palette[body.index % BodyOverlay.palette.count]
+                    if let box = body.boundingBox {
+                        let rect = CGRect(x: origin.x + CGFloat(box.x) * scale, y: origin.y + CGFloat(box.y) * scale,
+                                          width: CGFloat(box.z) * scale, height: CGFloat(box.w) * scale)
+                        context.stroke(Path(rect), with: .color(color.opacity(0.7)), style: StrokeStyle(lineWidth: 1.5, dash: body.source == "rect" ? [6, 4] : []))
+                    }
+                    let joints = Dictionary(uniqueKeysWithValues: body.joints.map { ($0.name, $0) })
+                    for (a, b) in BodyOverlay.bones {
+                        guard let ja = joints[a], let jb = joints[b] else { continue }
+                        var path = Path()
+                        path.move(to: place(ja.colorPixel))
+                        path.addLine(to: place(jb.colorPixel))
+                        context.stroke(path, with: .color(color), lineWidth: 2.5)
+                    }
+                    for joint in body.joints {
+                        let p = place(joint.colorPixel)
+                        let r: CGFloat = joint.name == "center" ? 7 : 4
+                        context.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r)), with: .color(color))
+                        if let z = joint.position?.z, joint.name == "pelvis" || joint.name == "center" || joint.name == "nose" {
+                            context.draw(Text(String(format: "%.2f m", z / 1000)).font(.caption2).foregroundColor(.white), at: CGPoint(x: p.x + 8, y: p.y - 8), anchor: .leading)
+                        }
+                    }
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
