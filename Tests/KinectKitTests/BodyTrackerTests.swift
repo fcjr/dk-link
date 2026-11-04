@@ -76,3 +76,31 @@ final class BodyTrackerFrameTests: XCTestCase {
         XCTAssertGreaterThan(bodies.count, 0)
     }
 }
+
+
+final class BodyIDTests: XCTestCase {
+    func testIDsFollowPeopleAcrossFrames() throws {
+        let json = PipelineTests.fixture("calibration.json")
+        var text = [CChar](repeating: 0, count: json.count + 1)
+        json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+        var calibration = k4a_calibration_t()
+        _ = k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration)
+        let tracker = BodyTracker(calibration: calibration)
+        func body(at x: Float, _ y: Float) -> Body {
+            Body(index: 0, joints: [BodyJoint(name: "center", confidence: 1, colorPixel: SIMD2(x, y), position: nil)],
+                 deviceTimestampMicroseconds: 0, boundingBox: SIMD4(x - 50, y - 100, 100, 200), source: "rect")
+        }
+        // Two people; detection order swaps on the second frame; ids must not.
+        let f1 = tracker.assignIDsForTesting([body(at: 200, 300), body(at: 900, 300)])
+        XCTAssertEqual(f1.map { $0.index }, [1, 2])
+        let f2 = tracker.assignIDsForTesting([body(at: 910, 310), body(at: 210, 305)])
+        XCTAssertEqual(f2.map { ($0.index, BodyTracker.centre(of: $0).x > 500) }.sorted { $0.0 < $1.0 }.map { $0.1 }, [false, true])
+        // One disappears for a few frames and comes back as the same id; a newcomer gets a new one.
+        for _ in 0..<5 { _ = tracker.assignIDsForTesting([body(at: 215, 300)]) }
+        let f3 = tracker.assignIDsForTesting([body(at: 220, 300), body(at: 905, 300), body(at: 560, 300)])
+        XCTAssertEqual(f3.map { $0.index }, [1, 2, 3])
+        // After a long absence the id is retired.
+        for _ in 0..<20 { _ = tracker.assignIDsForTesting([]) }
+        XCTAssertEqual(tracker.assignIDsForTesting([body(at: 220, 300)]).map { $0.index }, [4])
+    }
+}

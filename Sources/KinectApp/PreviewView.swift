@@ -202,6 +202,13 @@ struct BodyOverlay: View {
                                           width: CGFloat(box.z) * scale, height: CGFloat(box.w) * scale)
                         context.stroke(Path(rect), with: .color(color.opacity(0.7)), style: StrokeStyle(lineWidth: 1.5, dash: body.source == "rect" ? [6, 4] : []))
                     }
+                    if let box = body.boundingBox {
+                        context.draw(Text("#\(body.index)").font(.caption).bold().foregroundColor(color),
+                                     at: CGPoint(x: origin.x + CGFloat(box.x) * scale + 4, y: origin.y + CGFloat(box.y) * scale - 10), anchor: .leading)
+                    } else if let head = body.joints.first(where: { $0.name == "nose" || $0.name == "neck" }) {
+                        let p = place(head.colorPixel)
+                        context.draw(Text("#\(body.index)").font(.caption).bold().foregroundColor(color), at: CGPoint(x: p.x, y: p.y - 18), anchor: .center)
+                    }
                     let joints = Dictionary(uniqueKeysWithValues: body.joints.map { ($0.name, $0) })
                     for (a, b) in BodyOverlay.bones {
                         guard let ja = joints[a], let jb = joints[b] else { continue }

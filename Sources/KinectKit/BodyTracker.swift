@@ -1,6 +1,7 @@
 import Foundation
 import Vision
 import CoreVideo
+import simd
 import KinectCore
 
 /// Body tracking the Mac way: Apple's Vision framework finds 2D body joints
@@ -15,6 +16,8 @@ public struct BodyJoint: Sendable, Equatable {
 }
 
 public struct Body: Sendable, Equatable {
+    /// A stable id that follows the person from frame to frame (matched by
+    /// position; kept through short occlusions), used in the OSC addresses.
     public var index: Int
     public var joints: [BodyJoint]
     public var deviceTimestampMicroseconds: UInt64
@@ -34,6 +37,16 @@ public final class BodyTracker: @unchecked Sendable {
     public private(set) var lastBodies: [Body] = []
     public private(set) var lastProcessingMilliseconds: Double = 0
     public var onBodies: (@Sendable ([Body]) -> Void)?
+
+    /// Identity across frames: each track remembers where its person was last
+    /// seen (colour pixels) and how many frames ago.
+    private struct Track { var id: Int; var centre: SIMD2<Float>; var missed: Int }
+    private var tracks: [Track] = []
+    private var nextID = 1
+    /// How far (colour pixels) a person may move between frames and still be the same track.
+    public var matchDistance: Float = 220
+    /// How many frames a track survives without a detection.
+    public var missedFramesAllowed = 15
 
     /// Vision joint names mapped to k4abt-style names.
     static let jointNames: [(VNHumanBodyPoseObservation.JointName, String)] = [
@@ -121,7 +134,64 @@ public final class BodyTracker: @unchecked Sendable {
             let joint = BodyJoint(name: "center", confidence: Float(person.confidence), colorPixel: pixel, position: position)
             bodies.append(Body(index: bodies.count, joints: [joint], deviceTimestampMicroseconds: timestamp, boundingBox: pixelBox(box), source: "rect"))
         }
-        return bodies
+        return assignIDs(bodies)
+    }
+
+    /// The centre a body is tracked by: its box centre, else the mean of its joints.
+    static func centre(of body: Body) -> SIMD2<Float> {
+        if let box = body.boundingBox { return SIMD2(box.x + box.z / 2, box.y + box.w / 2) }
+        let sum = body.joints.reduce(SIMD2<Float>(0, 0)) { $0 + $1.colorPixel }
+        return sum / Float(max(body.joints.count, 1))
+    }
+
+    /// Greedy nearest-neighbour matching of this frame's bodies to live
+    /// tracks, closest pairs first; unmatched bodies start new tracks and
+    /// unmatched tracks age out.
+    private func assignIDs(_ detected: [Body]) -> [Body] {
+        lock.lock()
+        defer { lock.unlock() }
+        var centres = detected.map { BodyTracker.centre(of: $0) }
+        var pairs: [(distance: Float, body: Int, track: Int)] = []
+        for (b, c) in centres.enumerated() {
+            for (t, track) in tracks.enumerated() {
+                let d = simd_distance(c, track.centre)
+                if d <= matchDistance { pairs.append((d, b, t)) }
+            }
+        }
+        pairs.sort { $0.distance < $1.distance }
+        var bodyToTrack = [Int: Int]()
+        var usedTracks = Set<Int>()
+        for pair in pairs where bodyToTrack[pair.body] == nil && !usedTracks.contains(pair.track) {
+            bodyToTrack[pair.body] = pair.track
+            usedTracks.insert(pair.track)
+        }
+        var result = detected
+        for b in result.indices {
+            if let t = bodyToTrack[b] {
+                tracks[t].centre = centres[b]
+                tracks[t].missed = 0
+                result[b].index = tracks[t].id
+            } else {
+                let id = nextID
+                nextID += 1
+                tracks.append(Track(id: id, centre: centres[b], missed: 0))
+                result[b].index = id
+            }
+        }
+        let liveCount = tracks.count
+        for t in 0..<liveCount where !usedTracks.contains(t) && !result.contains(where: { $0.index == tracks[t].id }) {
+            tracks[t].missed += 1
+        }
+        tracks.removeAll { $0.missed > missedFramesAllowed }
+        return result.sorted { $0.index < $1.index }
+    }
+
+    /// Test hook for the id assignment.
+    public func assignIDsForTesting(_ detected: [Body]) -> [Body] { assignIDs(detected) }
+
+    /// Forgets every track, so ids restart at 1.
+    public func resetIDs() {
+        lock.lock(); tracks = []; nextID = 1; lock.unlock()
     }
 
     /// A colour pixel to a 3D point: find the depth pixel it sees (along the
