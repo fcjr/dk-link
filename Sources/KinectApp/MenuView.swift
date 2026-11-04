@@ -56,7 +56,7 @@ struct MenuView: View {
             if model.output.bodyTracking {
                 HStack {
                     TextField("Host", text: $model.output.oscHost).frame(width: 120)
-                    TextField("Port", value: $model.output.oscPort, format: .number).frame(width: 60)
+                    TextField("Port", value: $model.output.oscPort, format: .number.grouping(.never)).frame(width: 60)
                     Text(model.state.isRunning ? "\(model.bodyCount) bod\(model.bodyCount == 1 ? "y" : "ies") · \(Int(model.bodyMilliseconds)) ms" : "")
                         .font(.caption).foregroundStyle(.secondary)
                 }
