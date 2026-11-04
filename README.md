@@ -123,8 +123,14 @@ default) that an **OSC In CHOP/DAT** in TouchDesigner receives:
 ```
 
 It runs at the colour frame rate when the machine keeps up and otherwise
-skips frames rather than falling behind. Body index is Vision's detection
-order; there is no identity tracking across frames.
+skips frames rather than falling behind. `<i>` is a stable id: a person is
+matched to their track by position from frame to frame, keeps the id through
+up to 15 missed frames (occlusion, a step out of view), and newcomers get the
+next number. Someone the pose detector cannot resolve (partly out of frame,
+blurred) is still reported from the person detector with a single `center`
+joint, a `bbox x y w h` message and `source` "rect"; full poses have
+`source` "pose". The preview window draws skeletons, boxes and ids over the
+colour pane.
 
 ## Command line
 
