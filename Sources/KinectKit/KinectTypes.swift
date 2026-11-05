@@ -57,6 +57,41 @@ public enum DepthMode: String, CaseIterable, Codable, Identifiable, Sendable {
 
     public var hasDepth: Bool { self != .off && self != .passiveIR }
 
+    /// What a user picks by: the view, then the pixels.
+    public var label: String {
+        switch self {
+        case .off: return "Off"
+        case .nfovUnbinned: return "Narrow view, 640×576"
+        case .nfovBinned: return "Narrow view, long range, 320×288"
+        case .wfovBinned: return "Wide view, 512×512"
+        case .wfovUnbinned: return "Wide view, detailed, 1024×1024"
+        case .passiveIR: return "Infrared only, 1024×1024"
+        }
+    }
+
+    /// The reliable working distance, as Microsoft specifies it.
+    public var rangeMetres: ClosedRange<Double>? {
+        switch self {
+        case .nfovUnbinned: return 0.5...3.9
+        case .nfovBinned: return 0.5...5.5
+        case .wfovBinned: return 0.25...2.9
+        case .wfovUnbinned: return 0.25...2.2
+        case .off, .passiveIR: return nil
+        }
+    }
+
+    /// One line on what the mode is for.
+    public var detail: String {
+        switch self {
+        case .off: return "No depth or infrared; the colour camera only."
+        case .nfovUnbinned: return "The default. 75° wide, most detail, for a room-sized scene. NFOV unbinned."
+        case .nfovBinned: return "Reaches further with less noise, at a quarter of the pixels. NFOV 2x2 binned."
+        case .wfovBinned: return "120° wide for close scenes: tables, installations, near interaction. WFOV 2x2 binned."
+        case .wfovUnbinned: return "120° wide and detailed, at half the frame rate. WFOV unbinned."
+        case .passiveIR: return "An infrared picture with no distances in it."
+        }
+    }
+
     /// The fastest rate the sensor takes in this mode.
     public var maximumFrameRate: FrameRate {
         switch self {

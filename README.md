@@ -58,7 +58,9 @@ time; a notarized one opens like any other app.
 macOS asks for camera access the first time (that is the colour camera; the
 depth camera needs no permission). The app lives in the menu bar: pick a depth
 mode, colour resolution and frame rate, tick the Syphon outputs you want, and
-open the preview window.
+open the preview window. New to depth cameras? The menu's "What the depth
+data means" opens a guide; the same text is in
+[docs/depth-guide.md](docs/depth-guide.md).
 
 ## TouchDesigner
 

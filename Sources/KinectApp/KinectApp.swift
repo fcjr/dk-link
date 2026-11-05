@@ -19,6 +19,11 @@ struct KinectApp: App {
             PreviewWindow().environmentObject(model)
         }
         .defaultSize(width: 1000, height: 460)
+
+        Window("What the depth data means", id: "depthGuide") {
+            DepthGuideView().environmentObject(model)
+        }
+        .defaultSize(width: 640, height: 720)
     }
 }
 

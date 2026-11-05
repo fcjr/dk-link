@@ -27,6 +27,9 @@ transformation engine and Vision body tracking.
 
 ## Kinect Azure TOP
 
+What the depth, IR, point cloud and aligned images mean, which mode to
+pick and why pixels go black: [docs/depth-guide.md](../../docs/depth-guide.md).
+
 Page *Kinect Azure*:
 
 | parameter | name | notes |

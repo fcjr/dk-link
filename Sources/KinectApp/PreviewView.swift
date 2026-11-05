@@ -90,6 +90,7 @@ struct TexturePreview: NSViewRepresentable {
 
 struct PreviewWindow: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
     @State private var left: SyphonOutput.Stream = .color
     @State private var right: SyphonOutput.Stream = .depthPreview
 
@@ -101,6 +102,9 @@ struct PreviewWindow: View {
                 Text(model.state.label).font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 Picker("", selection: $right) { streamOptions }.frame(width: 200)
+                Button { openWindow(id: "depthGuide") } label: { Image(systemName: "questionmark.circle") }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help("What the depth data means")
             }
             HStack(spacing: 8) {
                 pane(left)
@@ -125,7 +129,7 @@ struct PreviewWindow: View {
     private func pane(_ stream: SyphonOutput.Stream) -> some View {
         ZStack(alignment: .bottomLeading) {
             TexturePreview(frames: model.previewFrames, stream: stream, device: model.metalDevice)
-            if stream == .color, model.output.bodyTracking, !model.bodies.isEmpty {
+            if stream == .color, !model.bodies.isEmpty {
                 BodyOverlay(bodies: model.bodies, imageSize: model.configuration.colorResolution.size)
             }
             if let note = note(for: stream) {
@@ -147,8 +151,9 @@ struct PreviewWindow: View {
             return "Colour is off in the menu"
         case .depth, .depthPreview, .depthInColor:
             if mode == .off { return "Depth is off in the menu" }
-            if mode == .passiveIR { return "Passive IR has no depth; pick another depth mode" }
-            if stream == .depth { return "16-bit packed form (R high, G low, B preview), dark by design" }
+            if mode == .passiveIR { return "Infrared only has no depth; pick another depth mode" }
+            if stream == .depth { return "Packed 16-bit: red high byte, green low byte, blue preview. Dark by design" }
+            if stream == .depthPreview { return "Warm is near, cool is far, black is no reading" }
         case .ir where mode == .off:
             return "Depth is off in the menu"
         default:
