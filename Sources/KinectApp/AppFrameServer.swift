@@ -58,10 +58,15 @@ final class AppFrameServer: @unchecked Sendable {
         server.updateStatus("Kinect for Mac is not streaming", serial: "")
     }
 
+    /// Whether any connected TouchDesigner client is asking for skeletons.
+    var clientsWantBodies: Bool { server.wantsBodies }
+
     /// The app's tracker hands bodies here (converted once).
-    func setBodies(_ tracked: [Body]) {
+    private var bodyMilliseconds: Double = 0
+
+    func setBodies(_ tracked: [Body], milliseconds: Double = 0) {
         let frames = tracked.map(FrameBody.from)
-        lock.lock(); bodies = frames; lock.unlock()
+        lock.lock(); bodies = frames; bodyMilliseconds = milliseconds; lock.unlock()
     }
 
     /// Called from the capture thread for every frame. Cheap when no client is
@@ -89,7 +94,8 @@ final class AppFrameServer: @unchecked Sendable {
         let started = now
         let images = kinds.isEmpty ? [] : producer.images(from: capture, kinds: kinds, bodies: bodies, frameID: frame)
         let decodeMs = Double(DispatchTime.now().uptimeNanoseconds - started) / 1e6
-        let stats: [Double] = [fps, decodeMs, Double(temperature), 0, Double(bodies.count), Double(KinectDevice.installedCount)]
+        lock.lock(); let bodyMs = bodyMilliseconds; lock.unlock()
+        let stats: [Double] = [fps, decodeMs, Double(temperature), bodyMs, Double(bodies.count), Double(KinectDevice.installedCount)]
         server.publish(images: images, bodies: bodies, stats: stats)
     }
 }

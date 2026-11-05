@@ -160,9 +160,10 @@ final class AppModel: ObservableObject {
             let pipeline = self.pipeline
             let tracker = BodyTracker(calibration: session.calibration)
             let osc = OSCSender(host: output.oscHost, port: output.oscPort)
+            let oscWanted = { [weak self] () -> Bool in self?.output.bodyTracking ?? false }
             tracker.onBodies = { [weak self] bodies in
-                osc.send(BodyTracker.oscBundle(bodies))
-                AppFrameServer.shared.setBodies(bodies)
+                if oscWanted() { osc.send(BodyTracker.oscBundle(bodies)) }
+                AppFrameServer.shared.setBodies(bodies, milliseconds: tracker.lastProcessingMilliseconds)
                 let milliseconds = tracker.lastProcessingMilliseconds
                 Task { @MainActor in
                     self?.bodyCount = bodies.count
@@ -173,8 +174,10 @@ final class AppModel: ObservableObject {
             bodyTracker = tracker
             self.osc = osc
             let trackingWanted = { [weak self] () -> Bool in
-                // Read on the capture thread; a stale value for one frame is harmless.
-                self?.output.bodyTracking ?? false
+                // Tracking runs whenever anything consumes it: the OSC switch,
+                // or a TouchDesigner client asking for skeletons. Read on the
+                // capture thread; a stale value for one frame is harmless.
+                (self?.output.bodyTracking ?? false) || AppFrameServer.shared.clientsWantBodies
             }
             session.onCapture = { capture in
                 pipeline?.process(capture)
@@ -236,13 +239,12 @@ final class AppModel: ObservableObject {
     }
 
     /// A TouchDesigner client asked for a configuration; adopt it, as if the
-    /// menu changed. Body tracking must be on whenever a client wants bodies.
+    /// menu changed. Tracking itself follows the clients' subscriptions.
     func applyClientRequest(_ request: FrameProtocol.SessionRequest) {
         var changed = false
         if configuration.depthMode != request.depthMode { configuration.depthMode = request.depthMode; changed = true }
         if configuration.colorResolution != request.colorResolution { configuration.colorResolution = request.colorResolution; changed = true }
         if configuration.frameRate != request.frameRate { configuration.frameRate = request.frameRate; changed = true }
-        if request.bodyTracking && !output.bodyTracking { output.bodyTracking = true }
         if changed && state.isRunning { restart() }
         else if !state.isRunning && request.active { start() }
     }

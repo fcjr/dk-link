@@ -52,14 +52,16 @@ struct MenuView: View {
                 Text("\(Int(model.output.previewRangeMillimetres)) mm").font(.caption).monospacedDigit()
             }
             Divider()
-            Toggle("Body tracking → OSC", isOn: $model.output.bodyTracking)
+            Toggle("Send skeletons over OSC", isOn: $model.output.bodyTracking)
             if model.output.bodyTracking {
                 HStack {
                     TextField("Host", text: $model.output.oscHost).frame(width: 120)
                     TextField("Port", value: $model.output.oscPort, format: .number.grouping(.never)).frame(width: 60)
-                    Text(model.state.isRunning ? "\(model.bodyCount) bod\(model.bodyCount == 1 ? "y" : "ies") · \(Int(model.bodyMilliseconds)) ms" : "")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
+            }
+            if model.state.isRunning && (model.output.bodyTracking || model.frameClientCount > 0) {
+                Text("Body tracking: \(model.bodyCount) bod\(model.bodyCount == 1 ? "y" : "ies") · \(Int(model.bodyMilliseconds)) ms per frame")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Divider()
             TouchDesignerSection()

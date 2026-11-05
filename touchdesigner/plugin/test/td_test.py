@@ -37,7 +37,7 @@ def setup():
     S['top'], S['chop'] = top, chop
     log('created', top.OPType, chop.OPType)
     top.par.Active = 1
-    top.par.Bodytracking = 1
+    top.par.Bodytracking = 0   # the CHOP alone must switch tracking on
     chop.par.Active = 1
     r['top_pars'] = [p.name for p in top.pars() if p.name[0].isupper()]
     r['chop_pars'] = [p.name for p in chop.pars() if p.name[0].isupper()]
@@ -91,6 +91,11 @@ def on_frame():
             idx = (f - 160) // 90
             phase = (f - 160) % 90
             if idx >= len(WANTED):
+                chop = S['chop']
+                S['report']['chop_final'] = {'warn': chop.warnings(), 'tracked': chop['p1/tracked'][0] if chop.numChans else None,
+                                             'id': chop['p1/id'][0] if chop.numChans else None,
+                                             'pelvis_z': chop['p1/pelvis:tz'][0] if chop.numChans else None,
+                                             'info': {c.name: round(c[0], 3) for c in S['info'].chans() if c.name.startswith('bodytracking')}}
                 log('all images cycled'); finish(); return
             name = WANTED[idx]
             if phase == 0:

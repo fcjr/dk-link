@@ -124,8 +124,10 @@ void KinectAzureCHOP::execute(CHOP_Output *output, const OP_Inputs *inputs, void
 
     myBodies.resize((size_t)myLayout.maxPlayers);
     myBodyCount = ktd_session_bodies(mySession, myBodies.data(), myLayout.maxPlayers, &myBodyFrame);
+    // Asking for bodies is what switches tracking on; the first result takes a
+    // moment, and needs an active Kinect Azure TOP (or the app) streaming.
     if (myBodyFrame == 0)
-        myWarning = "No body tracking data: turn on Body Tracking on an active Kinect Azure TOP.";
+        myWarning = "Body tracking is starting (no results yet). It needs an active Kinect Azure TOP or the Kinect for Mac app streaming.";
 
     // The colour image size, for UV coordinates.
     ktd_image_info colorInfo{};

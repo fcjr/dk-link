@@ -46,6 +46,8 @@ final class TDSession: @unchecked Sendable {
     struct Slot { var info: ktd_image_info; var bytes: [UInt8] }
     private var slots: [Slot?] = Array(repeating: nil, count: Int(KTD_IMAGE_COUNT.rawValue))
     private var interest: [UInt64] = Array(repeating: 0, count: Int(KTD_IMAGE_COUNT.rawValue)) // uptime ns of last request
+    private var bodiesInterest: UInt64 = 0 // uptime ns of the last request for bodies (CHOP) or a player index
+    private var lastSubscriptionBodies = false
     private var frameID: UInt64 = 0
 
     // Bodies, already in k4abt order.
@@ -188,6 +190,16 @@ final class TDSession: @unchecked Sendable {
         return last <= current && current - last < 3_000_000_000
     }
 
+    /// Tracking runs when the configuration asks for it, or when anything
+    /// consumed bodies or a player index recently: a Kinect Azure CHOP needs
+    /// no switch flipped anywhere.
+    private func wantsBodies(_ config: ktd_config?) -> Bool {
+        if let config, config.body_tracking { return true }
+        let current = DispatchTime.now().uptimeNanoseconds
+        lock.lock(); defer { lock.unlock() }
+        return bodiesInterest <= current && current - bodiesInterest < 3_000_000_000
+    }
+
     private func store(_ kind: ktd_image_kind, width: Int, height: Int, format: ktd_pixel_format, bytes: [UInt8], frame: UInt64, timestamp: UInt64) {
         var info = ktd_image_info()
         info.width = Int32(width)
@@ -210,7 +222,7 @@ final class TDSession: @unchecked Sendable {
         let bodies = self.bodies
         lock.unlock()
 
-        if let running, running.body_tracking, let tracker { tracker.submit(capture) }
+        if let tracker, wantsBodies(running) { tracker.submit(capture) }
 
         guard let producer else { return }
         let kinds = wantedKinds()
@@ -287,11 +299,16 @@ final class TDSession: @unchecked Sendable {
         let kinds = wantedKinds()
         var mask: UInt32 = 0
         for kind in kinds { mask |= 1 << UInt32(kind.rawValue) }
-        lock.lock(); let changed = force || mask != lastSubscriptionMask; lastSubscriptionMask = mask; lock.unlock()
+        let bodies = wantsBodies(config)
+        lock.lock()
+        let changed = force || mask != lastSubscriptionMask || bodies != lastSubscriptionBodies
+        lastSubscriptionMask = mask
+        lastSubscriptionBodies = bodies
+        lock.unlock()
         guard changed else { return }
         var sub = FrameProtocol.Subscription()
         sub.kinds = kinds
-        sub.bodies = config.body_tracking
+        sub.bodies = bodies
         sub.config = FrameProtocol.SessionRequest(
             depthMode: TDSession.depthMode(config.depth_mode),
             colorResolution: TDSession.colorResolution(config.color_resolution),
@@ -306,7 +323,9 @@ final class TDSession: @unchecked Sendable {
         guard kind.rawValue < KTD_IMAGE_COUNT.rawValue else { return 0 }
         lock.lock()
         interest[Int(kind.rawValue)] = DispatchTime.now().uptimeNanoseconds
-        let needResub = mode == .client && (lastSubscriptionMask & (1 << UInt32(kind.rawValue))) == 0
+        if kind == KTD_IMAGE_PLAYER_INDEX { bodiesInterest = interest[Int(kind.rawValue)] }
+        let needResub = mode == .client && ((lastSubscriptionMask & (1 << UInt32(kind.rawValue))) == 0 ||
+                                            (kind == KTD_IMAGE_PLAYER_INDEX && !lastSubscriptionBodies))
         let config = running
         guard let slot = slots[Int(kind.rawValue)] else {
             lock.unlock()
@@ -334,9 +353,13 @@ final class TDSession: @unchecked Sendable {
 
     func bodies(into out: UnsafeMutablePointer<ktd_body>?, max: Int32, frame: UnsafeMutablePointer<UInt64>?) -> Int32 {
         lock.lock()
+        bodiesInterest = DispatchTime.now().uptimeNanoseconds
+        let needResub = mode == .client && !lastSubscriptionBodies
+        let config = running
         let bodies = self.bodies
         let bodiesFrame = self.bodiesFrame
         lock.unlock()
+        if needResub, let config { control.async { [self] in sendSubscription(config, force: false) } }
         frame?.pointee = bodiesFrame
         guard let out, max > 0 else { return Int32(bodies.count) }
         let count = min(Int(max), bodies.count)
