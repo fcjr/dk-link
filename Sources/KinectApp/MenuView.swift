@@ -62,6 +62,8 @@ struct MenuView: View {
                 }
             }
             Divider()
+            TouchDesignerSection()
+            Divider()
             Toggle("Start when a Kinect is plugged in", isOn: $model.autoStart)
             if let firmware = model.firmware {
                 Text("Firmware \(firmware.depth) depth · \(firmware.rgb) rgb").font(.caption2).foregroundStyle(.tertiary)

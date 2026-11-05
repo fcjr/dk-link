@@ -71,17 +71,22 @@ aligned to Color, Player Index) and the same per-player channel names
 swapping the node. No Syphon or OSC in between: the operators talk to the
 camera directly through the same core as the app.
 
-```sh
-touchdesigner/plugin/build.sh --install     # builds and installs into TouchDesigner's Plugins folder
-```
+Install from the app: the plugin ships inside Kinect for Mac. Open the
+menu, find the TouchDesigner section, click **Install** (or **Update** when a
+newer app carries a newer plugin), restart TouchDesigner if it was open. Then
+OP Create dialog, Custom: "Kinect Azure (Mac)" TOP and CHOP. TouchDesigner
+asks once for permission to load the plugin.
 
-Then in TouchDesigner, OP Create dialog, Custom: "Kinect Azure (Mac)" TOP
-and CHOP. TouchDesigner asks once for permission to load the plugin. See
-`touchdesigner/plugin/README.md` for parameters, channels and the few
-deviations from Windows. Only one program can hold the camera, so quit the
-menu bar app while TouchDesigner's operators are active (and vice versa).
+The operators share the camera with the app: when Kinect for Mac is running
+they take frames from it over a local socket (full 16-bit depth, float point
+clouds, skeleton channels; status reads "via Kinect for Mac"), so Syphon,
+OSC and TouchDesigner can all be live at once; when it isn't running they
+open the camera themselves. Developers: `touchdesigner/plugin/build.sh
+--install` builds and installs from source, and
 `touchdesigner/plugin/test/td_test.py` is a scripted TouchDesigner run that
-exercises every image and the skeleton against the camera.
+exercises every image and the skeleton against the camera. See
+`touchdesigner/plugin/README.md` for parameters, channels and the few
+deviations from Windows.
 
 **The other way: Syphon and OSC** from the menu bar app, for software that
 has no plugin. Open the Textport in TouchDesigner and run

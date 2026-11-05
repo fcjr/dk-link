@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import KinectKit
 
 @main
 struct KinectApp: App {
@@ -25,6 +26,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // A menu bar app: no Dock icon, no main window on launch.
         NSApp.setActivationPolicy(.accessory)
+
+        // Hidden: install the TouchDesigner plugin from the command line and quit.
+        //   open -W "Kinect for Mac.app" --args --install-touchdesigner-plugin
+        if CommandLine.arguments.contains("--install-touchdesigner-plugin") {
+            let installer = TouchDesignerPluginInstaller()
+            do {
+                let version = try installer.install()
+                print("installed TouchDesigner plugin \(version) into \(installer.installedFolder.path)")
+            } catch {
+                print("TouchDesigner plugin install failed: \(error)")
+            }
+            // Through terminate, so a camera the model may have auto-started is
+            // stopped and closed rather than left claimed.
+            NSApp.terminate(nil)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

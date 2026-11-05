@@ -1,7 +1,10 @@
 #!/bin/sh
 # Builds the Kinect Azure TOP and CHOP plugins for TouchDesigner (macOS).
 #
-#   touchdesigner/plugin/build.sh [--lib path/to/libKinectTD.dylib] [--stub] [--install]
+#   touchdesigner/plugin/build.sh [--lib path/to/libKinectTD.dylib] [--stub] [--install] [--out dir] [--stamp text]
+#
+# --out    where to write the "Kinect Azure" folder (default: touchdesigner/plugin/build).
+# --stamp  writes the text into Kinect Azure/VERSION, which the app's installer compares.
 #
 # --stub   links the stub library (synthetic images, one fake body) instead of
 #          the real one, for testing the operators without a camera.
@@ -21,11 +24,14 @@ OUT="$PLUGIN_DIR/build/Kinect Azure"
 LIB=""
 STUB=0
 INSTALL=0
+STAMP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --lib) LIB="$2"; shift 2 ;;
     --stub) STUB=1; shift ;;
     --install) INSTALL=1; shift ;;
+    --out) OUT="$(mkdir -p "$2" && cd "$2" && pwd)/Kinect Azure"; shift 2 ;;
+    --stamp) STAMP="$2"; shift 2 ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
 done
@@ -90,6 +96,9 @@ $CXX -bundle -o "$OUT/KinectAzureCHOP.plugin/Contents/MacOS/KinectAzureCHOP" \
 for b in KinectAzureTOP KinectAzureCHOP; do
   codesign --force --deep --sign - "$OUT/$b.plugin"
 done
+if [ -n "$STAMP" ]; then
+  printf '%s\n' "$STAMP" > "$OUT/VERSION"
+fi
 echo "built: $OUT"
 otool -L "$OUT/KinectAzureCHOP.plugin/Contents/MacOS/KinectAzureCHOP" | grep KinectTD
 

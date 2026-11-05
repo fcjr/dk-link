@@ -52,6 +52,8 @@ final class AppModel: ObservableObject {
     @Published var bodyCount = 0
     @Published var bodyMilliseconds: Double = 0
     @Published var bodies: [Body] = []
+    /// TouchDesigner (or other) clients attached to the app's frame server.
+    @Published var frameClientCount = 0
     private var bodyTracker: BodyTracker?
     private var osc: OSCSender?
 
@@ -78,6 +80,9 @@ final class AppModel: ObservableObject {
         pipeline = OutputPipeline()
         pipeline?.settings = output
         AppModel.shared = self
+        AppFrameServer.shared.onClientCount = { [weak self] n in Task { @MainActor in self?.frameClientCount = n } }
+        AppFrameServer.shared.onConfigRequest = { [weak self] request in Task { @MainActor in self?.applyClientRequest(request) } }
+        AppFrameServer.shared.launch()
         refreshDevices()
         // Hotplug events arrive on a background thread; the 2 s poll stays as
         // the fallback for anything the event path misses.
@@ -157,6 +162,7 @@ final class AppModel: ObservableObject {
             let osc = OSCSender(host: output.oscHost, port: output.oscPort)
             tracker.onBodies = { [weak self] bodies in
                 osc.send(BodyTracker.oscBundle(bodies))
+                AppFrameServer.shared.setBodies(bodies)
                 let milliseconds = tracker.lastProcessingMilliseconds
                 Task { @MainActor in
                     self?.bodyCount = bodies.count
@@ -173,6 +179,7 @@ final class AppModel: ObservableObject {
             session.onCapture = { capture in
                 pipeline?.process(capture)
                 if trackingWanted() { tracker.submit(capture) }
+                AppFrameServer.shared.process(capture)
             }
             session.onStatistics = { [weak self] statistics in
                 let milliseconds = pipeline?.lastProcessingMilliseconds ?? 0
@@ -202,6 +209,7 @@ final class AppModel: ObservableObject {
             try session.start(imu: true)
             self.session = session
             state = .running(serial: device.serialNumber)
+            AppFrameServer.shared.begin(calibration: session.calibration, serial: device.serialNumber)
             readControls()
         } catch {
             state = .failed("\(error)")
@@ -210,6 +218,8 @@ final class AppModel: ObservableObject {
     }
 
     func stop() {
+        AppFrameServer.shared.end()
+        frameClientCount = 0
         session?.stop()
         session = nil
         pipeline?.stop()
@@ -223,6 +233,18 @@ final class AppModel: ObservableObject {
         } else {
             state = .noDevice
         }
+    }
+
+    /// A TouchDesigner client asked for a configuration; adopt it, as if the
+    /// menu changed. Body tracking must be on whenever a client wants bodies.
+    func applyClientRequest(_ request: FrameProtocol.SessionRequest) {
+        var changed = false
+        if configuration.depthMode != request.depthMode { configuration.depthMode = request.depthMode; changed = true }
+        if configuration.colorResolution != request.colorResolution { configuration.colorResolution = request.colorResolution; changed = true }
+        if configuration.frameRate != request.frameRate { configuration.frameRate = request.frameRate; changed = true }
+        if request.bodyTracking && !output.bodyTracking { output.bodyTracking = true }
+        if changed && state.isRunning { restart() }
+        else if !state.isRunning && request.active { start() }
     }
 
     func restart() {

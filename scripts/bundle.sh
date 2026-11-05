@@ -18,7 +18,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 VERSION="$(cat VERSION 2>/dev/null || echo 0.1.0)"
+STAMP="$VERSION+$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 swift build -c release --product KinectApp
+swift build -c release --product KinectTD
 BIN="$(swift build -c release --show-bin-path)"
 APP="$OUT/Kinect for Mac.app"
 rm -rf "$APP"
@@ -52,6 +54,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+# The TouchDesigner plugins ride inside the app (Contents/PlugIns, a code
+# location, so --deep signing covers them); the app installs them from there.
+mkdir -p "$APP/Contents/PlugIns/TouchDesigner"
+touchdesigner/plugin/build.sh --lib "$BIN/libKinectTD.dylib" --out "$(cd "$APP/Contents/PlugIns/TouchDesigner" && pwd)" --stamp "$STAMP" >/dev/null
+[ -f "$APP/Contents/PlugIns/TouchDesigner/Kinect Azure/VERSION" ] || { echo "TouchDesigner plugin did not build" >&2; exit 1; }
 cat > "$OUT/entitlements.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
