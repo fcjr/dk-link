@@ -62,7 +62,29 @@ open the preview window.
 
 ## TouchDesigner
 
-The quick way: open the Textport in TouchDesigner and run
+**The native way: custom operators.** `touchdesigner/plugin/` builds a
+**Kinect Azure TOP** and **Kinect Azure CHOP** for TouchDesigner on macOS,
+mirroring the Windows operators: the same Image menu (Color, Depth, IR,
+Point Cloud, Color aligned to Depth, Depth aligned to Color, Point Cloud
+aligned to Color, Player Index) and the same per-player channel names
+(`p1/pelvis:tx` and friends, metres), so a patch built on Windows ports by
+swapping the node. No Syphon or OSC in between: the operators talk to the
+camera directly through the same core as the app.
+
+```sh
+touchdesigner/plugin/build.sh --install     # builds and installs into TouchDesigner's Plugins folder
+```
+
+Then in TouchDesigner, OP Create dialog, Custom: "Kinect Azure (Mac)" TOP
+and CHOP. TouchDesigner asks once for permission to load the plugin. See
+`touchdesigner/plugin/README.md` for parameters, channels and the few
+deviations from Windows. Only one program can hold the camera, so quit the
+menu bar app while TouchDesigner's operators are active (and vice versa).
+`touchdesigner/plugin/test/td_test.py` is a scripted TouchDesigner run that
+exercises every image and the skeleton against the camera.
+
+**The other way: Syphon and OSC** from the menu bar app, for software that
+has no plugin. Open the Textport in TouchDesigner and run
 
 ```python
 exec(open('/path/to/dk-mac/touchdesigner/build_kinect_component.py').read())
