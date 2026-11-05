@@ -782,6 +782,7 @@ typedef struct openk4a_device
     uint16_t *ir;
     uint16_t *depth;
     openk4a_depth_model_t *model;
+    k4a_depth_mode_t model_mode; /* the mode the model was built for */
 
     /* What a frame is worth decoding. A viewer that is showing the colour
      * camera has no use for either plane, and one that is showing the IR has

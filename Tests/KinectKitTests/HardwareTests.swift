@@ -92,22 +92,39 @@ final class HardwareTests: XCTestCase {
         XCTAssertGreaterThan(exposure.maximum, exposure.minimum)
     }
 
-    func testWideFieldModes() throws {
+    /// Every depth mode in turn on one open device, the way the app switches
+    /// them from the menu: the planes and the model must follow the mode.
+    func testModeChangesOnOneOpenDevice() throws {
         let device = try KinectDevice()
-        for (mode, size) in [(DepthMode.wfovBinned, (512, 512)), (DepthMode.passiveIR, (1024, 1024))] {
-            try device.start(KinectConfiguration(depthMode: mode, colorResolution: .off, frameRate: .fps30))
+        let pipeline = try XCTUnwrap(OutputPipeline())
+        let order: [DepthMode] = [.nfovUnbinned, .wfovUnbinned, .nfovBinned, .wfovBinned, .passiveIR, .nfovUnbinned]
+        for mode in order {
+            let configuration = KinectConfiguration(depthMode: mode, colorResolution: .p720, frameRate: .fps30)
+            pipeline.setCalibration(try device.calibration(for: configuration))
+            try device.start(configuration)
             var seen = 0
-            for _ in 0..<40 {
+            var validDepth = 0.0
+            for _ in 0..<120 {
                 guard let capture = try device.capture(timeoutMilliseconds: 500) else { continue }
                 let ir = try XCTUnwrap(capture.ir)
-                XCTAssertEqual(ir.width, size.0)
-                XCTAssertEqual(ir.height, size.1)
-                if mode.hasDepth { XCTAssertNotNil(capture.depth) } else { XCTAssertNil(capture.depth) }
+                XCTAssertEqual(ir.width, mode.size.width, "\(mode)")
+                XCTAssertEqual(ir.height, mode.size.height, "\(mode)")
+                if mode.hasDepth {
+                    let depth = try XCTUnwrap(capture.depth)
+                    XCTAssertEqual(depth.width, mode.size.width, "\(mode)")
+                    validDepth = depth.withUInt16 { Double($0.filter { $0 != 0 }.count) / Double($0.count) }
+                } else {
+                    XCTAssertNil(capture.depth)
+                }
+                pipeline.process(capture)
                 seen += 1
-                if seen == 5 { break }
+                if seen == 8 { break }
             }
             device.stop()
-            XCTAssertEqual(seen, 5, "\(mode) did not deliver frames")
+            XCTAssertEqual(seen, 8, "\(mode) did not deliver frames")
+            if mode.hasDepth {
+                XCTAssertGreaterThan(validDepth, 0.1, "\(mode) depth is mostly empty")
+            }
         }
     }
 }

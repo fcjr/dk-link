@@ -253,9 +253,17 @@ bool openk4a_device_stream_start(openk4a_device_t *device, k4a_depth_mode_t dept
         (void)openk4a_depth_mcu_calibration_block(device);
     }
 
+    /* The model carries the mode's own size and tables: a model built for
+     * another mode would decode the wrong number of pixels into these planes. */
+    if (device->model != NULL && device->model_mode != depth_mode)
+    {
+        openk4a_depth_model_free(device->model);
+        device->model = NULL;
+    }
     char where[128] = "";
     if (device->model == NULL)
     {
+        device->model_mode = depth_mode;
         device->model = openk4a_depth_model_open(depth_mode,
                                              device->calibration_block,
                                              device->calibration_block_size,
