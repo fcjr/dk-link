@@ -4,7 +4,7 @@ import XCTest
 /// The firmware package parser, against the vendored 1.6.110080014 package
 /// when it is on disk, and against synthetic corruption.
 final class FirmwareTests: XCTestCase {
-    static let packagePath = "/Users/fcjr/git/dk-mac/vendor/microsoft/windows/AzureKinectDK_Fw_1.6.110080014.bin"
+    static let packagePath = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../vendor/microsoft/windows/AzureKinectDK_Fw_1.6.110080014.bin").standardized.path
 
     func testVendoredPackageParses() throws {
         guard let data = FileManager.default.contents(atPath: Self.packagePath) else {

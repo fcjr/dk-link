@@ -2,7 +2,7 @@
 
 Run it from TouchDesigner's Textport (Dialogs > Textport):
 
-    exec(open('/path/to/dk-mac/touchdesigner/build_dklink_component.py').read())
+    exec(open('/path/to/dk-link/touchdesigner/build_dklink_component.py').read())
 
 It makes a Base COMP named `dklink` in /project1 with:
     color        Syphon Spout In TOP  "DK Color"

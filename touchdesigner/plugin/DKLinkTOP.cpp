@@ -19,7 +19,7 @@ DLLEXPORT void FillTOPPluginInfo(TOP_PluginInfo *info)
     info->customOPInfo.opIcon->setString("KAZ");
     info->customOPInfo.authorName->setString("DK Link");
     info->customOPInfo.authorEmail->setString("");
-    info->customOPInfo.opHelpURL->setString("https://github.com/fcjr/dk-mac");
+    info->customOPInfo.opHelpURL->setString("https://github.com/fcjr/dk-link");
     info->customOPInfo.minInputs = 0;
     info->customOPInfo.maxInputs = 0;
 }

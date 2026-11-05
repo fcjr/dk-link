@@ -98,7 +98,7 @@ TouchDesigner without the plugin, run this in the Textport to get a
 already wired:
 
 ```python
-exec(open('/path/to/dk-mac/touchdesigner/build_dklink_component.py').read())
+exec(open('/path/to/dk-link/touchdesigner/build_dklink_component.py').read())
 ```
 
 Skeletons go out as OSC bundles over UDP (127.0.0.1:7000 by default) for an
