@@ -38,7 +38,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleName</key><string>DK Link</string>
   <key>CFBundleDisplayName</key><string>DK Link</string>
-  <key>CFBundleIdentifier</key><string>com.frankchiarulli.dklink</string>
+  <key>CFBundleIdentifier</key><string>com.leftshift.dklink</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleExecutable</key><string>DK Link</string>

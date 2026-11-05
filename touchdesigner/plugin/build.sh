@@ -65,7 +65,7 @@ bundle() {
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>en</string>
   <key>CFBundleExecutable</key><string>$name</string>
-  <key>CFBundleIdentifier</key><string>com.frankchiarulli.dklink.$name</string>
+  <key>CFBundleIdentifier</key><string>com.leftshift.dklink.$name</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$name</string>
   <key>CFBundlePackageType</key><string>BNDL</string>
