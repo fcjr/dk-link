@@ -63,6 +63,9 @@ struct MenuView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(footer).font(.caption2).foregroundStyle(.tertiary)
                 Spacer()
+                if let updater = Updates.controller?.updater {
+                    CheckForUpdatesButton(updater: updater).controlSize(.small)
+                }
                 Button("Quit") { NSApp.terminate(nil) }.keyboardShortcut("q").controlSize(.small)
             }
         }

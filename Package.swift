@@ -12,6 +12,9 @@ let package = Package(
         .executable(name: "dklink", targets: ["dklink"]),
         .executable(name: "DKLinkApp", targets: ["DKLinkApp"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4"),
+    ],
     targets: [
         .target(
             name: "CLibusb",
@@ -94,9 +97,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "DKLinkApp",
-            dependencies: ["DKKit"],
+            dependencies: ["DKKit", .product(name: "Sparkle", package: "Sparkle")],
             path: "Sources/DKLinkApp",
             linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"]),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("AppKit"),
                 .linkedFramework("MetalKit"),

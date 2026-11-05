@@ -1,0 +1,131 @@
+name: release
+
+# Builds, signs and notarizes DK Link on version tags, attaches the .dmg to a
+# GitHub Release, signs the update for Sparkle, adds the appcast entry on
+# main, and publishes the Homebrew cask.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  SPARKLE_VERSION: "2.9.4"
+  SIGN_IDENTITY: "Developer ID Application: Left Shift Logical, LLC (KNBPD99JQM)"
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify the tag matches VERSION
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME#v}" = "$(cat VERSION)"
+
+      - name: Import the signing certificate
+        # The .p12 comes in base64 via env (single-line values are masked
+        # reliably) into a throwaway keychain that dies with the runner.
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/build.keychain-db"
+          password="$(uuidgen)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" login.keychain-db
+
+      - name: Write the App Store Connect API key
+        env:
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/asc"
+          printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/asc/AuthKey.p8"
+
+      # Signs inside out, notarizes and staples the app, then builds, signs,
+      # notarizes and staples the .dmg.
+      - name: Build, sign and notarize
+        env:
+          NOTARY_KEY_PATH: ${{ runner.temp }}/asc/AuthKey.p8
+          NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY }}
+          NOTARY_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: scripts/bundle.sh --sign "$SIGN_IDENTITY" --dmg --notarize api
+
+      - name: Sign the update for Sparkle
+        # DK Link's own EdDSA key; its public half is SUPublicEDKey in
+        # scripts/bundle.sh.
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          curl -sfL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
+            | tar -xJ -C "$RUNNER_TEMP/sparkle"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$RUNNER_TEMP/sparkle/bin/sign_update" \
+            --ed-key-file - "dist/DK-Link-${version}.dmg" > "$RUNNER_TEMP/sparkle-attrs"
+
+      - name: Create the GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" "dist/DK-Link-${version}.dmg" \
+            --title "DK Link ${version}" \
+            --generate-notes
+
+      - name: Update the appcast on main
+        # GITHUB_TOKEN pushes don't trigger workflows, which is right for a
+        # bot commit that only edits appcast.xml.
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          scripts/update-appcast.sh "$version" "$(cat "$RUNNER_TEMP/sparkle-attrs")"
+          git add appcast.xml
+          git commit -m "Update appcast for ${version}"
+          git push origin main
+
+      - name: Generate tap token
+        id: tap-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: fcjr
+          repositories: homebrew-fcjr
+
+      - name: Publish the Homebrew cask
+        env:
+          TAP_TOKEN: ${{ steps.tap-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          sha="$(shasum -a 256 "dist/DK-Link-${version}.dmg" | awk '{print $1}')"
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/fcjr/homebrew-fcjr.git" "$RUNNER_TEMP/tap"
+          mkdir -p "$RUNNER_TEMP/tap/Casks"
+          sed -e "s/VERSION_PLACEHOLDER/${version}/" -e "s/SHA256_PLACEHOLDER/${sha}/" \
+            homebrew/dk-link.rb > "$RUNNER_TEMP/tap/Casks/dk-link.rb"
+          cd "$RUNNER_TEMP/tap"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/dk-link.rb
+          git diff --cached --quiet || git commit -m "dk-link ${version}"
+          git push

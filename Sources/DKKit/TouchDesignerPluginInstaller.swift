@@ -3,7 +3,7 @@ import AppKit
 
 /// Installs, updates and removes the DK Link TOP/CHOP plugins for
 /// TouchDesigner from the copy the app carries. The app bundle holds the
-/// plugin folder under Contents/PlugIns/TouchDesigner/DK Link with a
+/// plugin folder under Contents/Resources/TouchDesigner/DK Link with a
 /// VERSION stamp; TouchDesigner loads plugins from its own Plugins folder.
 public final class TouchDesignerPluginInstaller {
     public static let folderName = "DK Link"
@@ -44,10 +44,10 @@ public final class TouchDesignerPluginInstaller {
         self.pluginsRoot = pluginsRoot
     }
 
-    /// The app's defaults: the bundled folder under Contents/PlugIns and the
+    /// The app's defaults: the bundled folder under Contents/Resources and the
     /// user's TouchDesigner099 Plugins directory.
     public convenience init() {
-        let bundled = Bundle.main.builtInPlugInsURL?.appendingPathComponent("TouchDesigner").appendingPathComponent(TouchDesignerPluginInstaller.folderName)
+        let bundled = Bundle.main.resourceURL?.appendingPathComponent("TouchDesigner").appendingPathComponent(TouchDesignerPluginInstaller.folderName)
         let exists = bundled.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
         let home = FileManager.default.homeDirectoryForCurrentUser
         let root = home.appendingPathComponent("Library/Application Support/Derivative/TouchDesigner099/Plugins")

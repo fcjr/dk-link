@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build
+
+      # Hardware tests skip themselves without a camera (DKLINK_HW_TESTS).
+      - name: Test
+        run: swift test
+
+      # No signing identity on CI: the app, CLI and TouchDesigner plugins
+      # build and are ad-hoc signed.
+      - name: Bundle the app
+        run: scripts/bundle.sh --dmg

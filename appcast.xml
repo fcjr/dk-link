@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sparkle appcast for DK Link. The app reads this file from the main branch.
+  .github/workflows/release.yml adds an <item> for each release, signed with
+  DK Link's own EdDSA key (keychain account "dklink", secret SPARKLE_PRIVATE_KEY).
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>DK Link</title>
+    <link>https://raw.githubusercontent.com/fcjr/dk-link/main/appcast.xml</link>
+    <description>Updates for DK Link</description>
+    <language>en</language>
+  </channel>
+</rss>

@@ -49,6 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // A menu bar app: no Dock icon, no main window on launch.
         NSApp.setActivationPolicy(.accessory)
+        // Start Sparkle at launch so its scheduled checks run even if the menu
+        // is never opened.
+        _ = Updates.controller
 
         // Hidden: install the TouchDesigner plugin from the command line and quit.
         //   open -W "DK Link.app" --args --install-touchdesigner-plugin

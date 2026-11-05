@@ -7,25 +7,39 @@ colour and skeletons; TouchDesigner gets native DK Link TOP and CHOP
 operators; anything else gets Syphon and OSC. Underneath is a
 `libk4a`-compatible core in C you can build your own software on.
 
-No kernel extension, no driver, no Homebrew.
+No kernel extension, no driver.
 
 ## Install
 
-Build the app and put it in Applications:
+With Homebrew:
 
 ```sh
-scripts/bundle.sh --dmg
-open dist/DK-Link-*.dmg
+brew trust fcjr/fcjr   # required since homebrew 6
+brew install --cask fcjr/fcjr/dk-link
 ```
+
+or download the `.dmg` from the
+[latest release](https://github.com/fcjr/dk-link/releases/latest). The app
+updates itself, and the cask also puts the `dklink` command-line tool on
+your PATH.
 
 Open DK Link. It lives in the menu bar, not the Dock. The first time,
 macOS asks for camera access: that is the colour camera, which macOS treats
 as a webcam. The depth camera needs no permission. Plug the camera in and
 the app starts streaming on its own.
 
+To build it yourself, `scripts/bundle.sh --dmg` writes `dist/DK-Link-<version>.dmg`.
 A build you signed yourself opens with right-click, Open, the first time.
 `scripts/bundle.sh --sign "Developer ID Application: …" --dmg --notarize <profile>`
 makes one that opens like any other app.
+
+## Releasing
+
+Run the **bump-release** workflow from the Actions tab. It bumps `VERSION`,
+tags `vX.Y.Z` and pushes; the tag runs **release**, which signs and
+notarizes the app and `.dmg`, publishes the GitHub release, signs the update
+with DK Link's Sparkle key and adds it to `appcast.xml`, and updates the
+`dk-link` cask in `fcjr/homebrew-fcjr`.
 
 ## TouchDesigner
 
