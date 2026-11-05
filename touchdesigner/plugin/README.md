@@ -1,39 +1,39 @@
-# Kinect Azure TOP and CHOP for TouchDesigner on macOS
+# DK Link TOP and CHOP for TouchDesigner on macOS
 
-Native custom operators that give TouchDesigner on a Mac the **Kinect Azure
-TOP** and **Kinect Azure CHOP** it has on Windows: the camera's images as
+Native custom operators that give TouchDesigner on a Mac the **DK Link
+TOP** and **DK Link CHOP** it has on Windows: the camera's images as
 TOPs and body joints as CHOP channels, with the Windows operators' parameter
 names, image menu and channel naming, so a patch moves between the two by
 swapping the node. No Syphon, no OSC, nothing to wire: drop the folder in and
 the nodes are in the OP Create dialog.
 
-Built on the Kinect for Mac library (`libKinectTD.dylib`), which embeds the
+Built on the DK Link library (`libDKLinkTD.dylib`), which embeds the
 whole stack: the k4a-compatible core, the Metal depth decoder, the
 transformation engine and Vision body tracking.
 
 ## Install
 
-From the Kinect for Mac app: open its menu and click **Install** in the
+From the DK Link app: open its menu and click **Install** in the
 TouchDesigner section, then restart TouchDesigner if it was running. The
-app installs the `Kinect Azure` folder into
+app installs the `DK Link` folder into
 `~/Library/Application Support/Derivative/TouchDesigner099/Plugins/` and
 offers **Update** when it carries a newer plugin. TouchDesigner asks once
 for permission to load it.
 
-Then press Tab in a network and look in the Custom family: **Kinect Azure
+Then press Tab in a network and look in the Custom family: **DK Link
 (Mac)** TOP and CHOP.
 
-From source: `swift build -c release --product KinectTD`, then
+From source: `swift build -c release --product DKLinkTD`, then
 `touchdesigner/plugin/build.sh --install` (or `--stub` for a synthetic
 library that needs no camera). Keep the two bundles together: the CHOP links
 the library inside the TOP's bundle, so they share one camera session.
 
-## Kinect Azure TOP
+## DK Link TOP
 
 What the depth, IR, point cloud and aligned images mean, which mode to
 pick and why pixels go black: [docs/depth-guide.md](../../docs/depth-guide.md).
 
-Page *Kinect Azure*:
+Page *DK Link*:
 
 | parameter | name | notes |
 |---|---|---|
@@ -61,7 +61,7 @@ Image menu (the Windows order) and what comes out:
 | Point Cloud | RGBA 32-bit float, xyz metres in the depth camera's frame, alpha = valid |
 | Point Cloud aligned to Color | RGBA 32-bit float, xyz metres in the colour camera's frame |
 
-Every Kinect Azure node in the process shares **one** camera session: put the
+Every DK Link node in the process shares **one** camera session: put the
 configuration (depth mode, resolution, FPS, body tracking) on one node and use
 the others only for their Image; if two active TOPs ask for different
 configurations the last one cooked wins. The TOP only uploads when a new frame
@@ -72,13 +72,13 @@ Info CHOP: `image_frame`, `depth_timestamp`, `captures_per_second`,
 `devices`. Info DAT: status, serial, image, library.
 
 Not on macOS: Hardware Type (Orbbec), Sensor Orientation, Sync Image to Body
-Tracking, the Color and Timing pages (set colour controls from the Kinect for
-Mac app or `kinectctl`; wired sync is accepted by the camera but there is no
+Tracking, the Color and Timing pages (set colour controls from the DK Link
+app or `dklink`; wired sync is accepted by the camera but there is no
 parameter yet).
 
-## Kinect Azure CHOP
+## DK Link CHOP
 
-One sample per cook, not time-sliced. Page *Kinect Azure*: `Active`, `Top`
+One sample per cook, not time-sliced. Page *DK Link*: `Active`, `Top`
 (kept for Windows patches; unused, the session is shared), `Maxplayers`,
 `Worldspace`, `Colorspace`, `Confidence`, `Flipimagev`, `Flipskelu`.
 
@@ -104,7 +104,7 @@ lengths, depth-image positions, IMU channels.
 
 `test/td_test.py` runs inside TouchDesigner: it creates both nodes, cycles the
 Image menu, saves each image, dumps the CHOP channels and node errors to
-`$KINECT_TD_TEST_OUT/report.json`, and quits. A project that runs it on start
+`$DKLINK_TD_TEST_OUT/report.json`, and quits. A project that runs it on start
 is built from text with the app's own `toeexpand`/`toecollapse` (an Execute
 DAT with `onStart`); launch it with
 `/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner test.toe`.

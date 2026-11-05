@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "KinectMac",
+    name: "DKLink",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "KinectCore", targets: ["KinectCore"]),
+        .library(name: "DKCore", targets: ["DKCore"]),
         .library(name: "Syphon", targets: ["Syphon"]),
-        .library(name: "KinectKit", targets: ["KinectKit"]),
-        .library(name: "KinectTD", type: .dynamic, targets: ["KinectTD"]),
-        .executable(name: "kinectctl", targets: ["kinectctl"]),
-        .executable(name: "KinectApp", targets: ["KinectApp"]),
+        .library(name: "DKKit", targets: ["DKKit"]),
+        .library(name: "DKLinkTD", type: .dynamic, targets: ["DKLinkTD"]),
+        .executable(name: "dklink", targets: ["dklink"]),
+        .executable(name: "DKLinkApp", targets: ["DKLinkApp"]),
     ],
     targets: [
         .target(
@@ -33,9 +33,9 @@ let package = Package(
             ]
         ),
         .target(
-            name: "KinectCore",
+            name: "DKCore",
             dependencies: ["CLibusb"],
-            path: "Sources/KinectCore",
+            path: "Sources/DKCore",
             exclude: ["openk4a/LICENSE.OpenK4A"],
             publicHeadersPath: "include",
             cSettings: [
@@ -69,9 +69,9 @@ let package = Package(
             ]
         ),
         .target(
-            name: "KinectKit",
-            dependencies: ["KinectCore", "Syphon"],
-            path: "Sources/KinectKit",
+            name: "DKKit",
+            dependencies: ["DKCore", "Syphon"],
+            path: "Sources/DKKit",
             linkerSettings: [
                 .linkedFramework("Metal"),
                 .linkedFramework("CoreVideo"),
@@ -79,23 +79,23 @@ let package = Package(
             ]
         ),
         .target(
-            name: "CKinectTD",
-            path: "Sources/CKinectTD",
+            name: "CDKLinkTD",
+            path: "Sources/CDKLinkTD",
             publicHeadersPath: "include"
         ),
         .target(
-            name: "KinectTD",
-            dependencies: ["KinectKit", "KinectCore", "CKinectTD"],
-            path: "Sources/KinectTD",
+            name: "DKLinkTD",
+            dependencies: ["DKKit", "DKCore", "CDKLinkTD"],
+            path: "Sources/DKLinkTD",
             linkerSettings: [
                 .linkedFramework("Metal"),
                 .linkedFramework("Vision"),
             ]
         ),
         .executableTarget(
-            name: "KinectApp",
-            dependencies: ["KinectKit"],
-            path: "Sources/KinectApp",
+            name: "DKLinkApp",
+            dependencies: ["DKKit"],
+            path: "Sources/DKLinkApp",
             linkerSettings: [
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("AppKit"),
@@ -103,25 +103,25 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "kinectctl",
-            dependencies: ["KinectCore", "Syphon"],
-            path: "Sources/kinectctl"
+            name: "dklink",
+            dependencies: ["DKCore", "Syphon"],
+            path: "Sources/dklink"
         ),
         .testTarget(
-            name: "KinectTDTests",
-            dependencies: ["KinectTD", "CKinectTD"],
-            path: "Tests/KinectTDTests"
+            name: "DKLinkTDTests",
+            dependencies: ["DKLinkTD", "CDKLinkTD"],
+            path: "Tests/DKLinkTDTests"
         ),
         .testTarget(
-            name: "KinectKitTests",
-            dependencies: ["KinectKit"],
-            path: "Tests/KinectKitTests",
+            name: "DKKitTests",
+            dependencies: ["DKKit"],
+            path: "Tests/DKKitTests",
             resources: [.copy("Fixtures")]
         ),
         .testTarget(
-            name: "KinectCoreTests",
-            dependencies: ["KinectCore"],
-            path: "Tests/KinectCoreTests",
+            name: "DKCoreTests",
+            dependencies: ["DKCore"],
+            path: "Tests/DKCoreTests",
             resources: [.copy("Fixtures")]
         ),
     ],

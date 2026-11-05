@@ -1,10 +1,10 @@
 """Runs inside TouchDesigner, driven frame by frame from the test project's
-Execute DAT onFrameEnd. Creates the Kinect Azure (Mac) TOP and CHOP, cycles
+Execute DAT onFrameEnd. Creates the DK Link TOP and CHOP, cycles
 the Image menu saving each, dumps the CHOP channels and node errors to
-$KINECT_TD_TEST_OUT/report.json, and quits."""
+$DKLINK_TD_TEST_OUT/report.json, and quits."""
 import os, json, traceback
 
-OUT = os.environ.get('KINECT_TD_TEST_OUT', '/tmp/kinect-td-test')
+OUT = os.environ.get('DKLINK_TD_TEST_OUT', '/tmp/dklink-td-test')
 os.makedirs(OUT, exist_ok=True)
 S = {'report': {'version': app.version, 'build': app.build, 'steps': [], 'images': {}},
      'frame': 0, 'ready': False, 'done': False}
@@ -32,8 +32,8 @@ def setup():
         project_comp.op('test').destroy()
     parent = project_comp.create(baseCOMP, 'test')
     S['parent'] = parent
-    top = parent.create('KinectazuremacTOP', 'kinect')
-    chop = parent.create('KinectazuremacCHOP', 'skeleton')
+    top = parent.create('DklinkTOP', 'dklink')
+    chop = parent.create('DklinkCHOP', 'skeleton')
     S['top'], S['chop'] = top, chop
     log('created', top.OPType, chop.OPType)
     top.par.Active = 1

@@ -1,9 +1,9 @@
 <img src="docs/icon.png" width="96" align="right" alt="">
 
-# Kinect for Mac
+# DK Link
 
 Use an Azure Kinect DK on a Mac. A menu bar app streams depth, infrared,
-colour and skeletons; TouchDesigner gets native Kinect Azure TOP and CHOP
+colour and skeletons; TouchDesigner gets native DK Link TOP and CHOP
 operators; anything else gets Syphon and OSC. Underneath is a
 `libk4a`-compatible core in C you can build your own software on.
 
@@ -15,12 +15,12 @@ Build the app and put it in Applications:
 
 ```sh
 scripts/bundle.sh --dmg
-open dist/Kinect-for-Mac-*.dmg
+open dist/DK-Link-*.dmg
 ```
 
-Open Kinect for Mac. It lives in the menu bar, not the Dock. The first time,
+Open DK Link. It lives in the menu bar, not the Dock. The first time,
 macOS asks for camera access: that is the colour camera, which macOS treats
-as a webcam. The depth camera needs no permission. Plug the Kinect in and
+as a webcam. The depth camera needs no permission. Plug the camera in and
 the app starts streaming on its own.
 
 A build you signed yourself opens with right-click, Open, the first time.
@@ -29,9 +29,9 @@ makes one that opens like any other app.
 
 ## TouchDesigner
 
-1. Open the Kinect for Mac menu and click **Install** in the TouchDesigner
+1. Open the DK Link menu and click **Install** in the TouchDesigner
    section. Restart TouchDesigner if it was running.
-2. In TouchDesigner, add a **Kinect Azure (Mac)** TOP for images or CHOP
+2. In TouchDesigner, add a **DK Link** TOP for images or CHOP
    for skeletons. They are in the Custom family of the OP Create dialog.
 3. Pick the depth mode and image on the TOP, exactly as on Windows.
 
@@ -41,7 +41,7 @@ Depth, IR, Point Cloud, the aligned variants, Player Index) and channel names
 swapping the node. Depth comes through as 32-bit float metres and point
 clouds as float xyz; nothing is packed or unpacked.
 
-The operators share the camera with the app. While Kinect for Mac is
+The operators share the camera with the app. While DK Link is
 running they take frames from it, so the app's Syphon and OSC outputs stay
 live at the same time. When the app is not running they open the camera
 themselves. When the app carries a newer plugin than the one installed, the
@@ -75,11 +75,11 @@ Syphon carries 8-bit BGRA, so the 16-bit images are packed:
 
 | server | pixels |
 |---|---|
-| Kinect Color | BGRA |
-| Kinect Depth, Kinect IR, Kinect Depth (color aligned) | R = high byte, G = low byte, B = 8-bit preview, A = 255; millimetres, 0 = no reading |
-| Kinect Color (depth aligned) | BGRA in the depth camera's view |
-| Kinect Depth (colorized) | the false-colour preview |
-| Kinect XY Table | the depth camera's unit rays, 16-bit x in R,G and y in B,A, mapped from -2..2 onto 0..65535 |
+| DK Color | BGRA |
+| DK Depth, DK IR, DK Depth (color aligned) | R = high byte, G = low byte, B = 8-bit preview, A = 255; millimetres, 0 = no reading |
+| DK Color (depth aligned) | BGRA in the depth camera's view |
+| DK Depth (colorized) | the false-colour preview |
+| DK XY Table | the depth camera's unit rays, 16-bit x in R,G and y in B,A, mapped from -2..2 onto 0..65535 |
 
 In a GLSL TOP set to 32-bit float, millimetres come back with:
 
@@ -94,21 +94,21 @@ void main() {
 
 A point is `(x * z, y * z, z)` with x and y from the XY table. For
 TouchDesigner without the plugin, run this in the Textport to get a
-`kinect` component with `color`, `depth_mm`, `ir` and `pointcloud` outputs
+`dklink` component with `color`, `depth_mm`, `ir` and `pointcloud` outputs
 already wired:
 
 ```python
-exec(open('/path/to/dk-mac/touchdesigner/build_kinect_component.py').read())
+exec(open('/path/to/dk-mac/touchdesigner/build_dklink_component.py').read())
 ```
 
 Skeletons go out as OSC bundles over UDP (127.0.0.1:7000 by default) for an
 OSC In CHOP or DAT:
 
 ```
-/kinect/bodies                      count
-/kinect/body/<i>/<joint>            x y z confidence   (mm, depth camera frame; z = 0 when no depth)
-/kinect/body/<i>/<joint>/pixel      u v                (colour pixels)
-/kinect/body/<i>/bbox               x y w h            (colour pixels)
+/dk/bodies                      count
+/dk/body/<i>/<joint>            x y z confidence   (mm, depth camera frame; z = 0 when no depth)
+/dk/body/<i>/<joint>/pixel      u v                (colour pixels)
+/dk/body/<i>/bbox               x y w h            (colour pixels)
 ```
 
 `<i>` is a stable id: a person keeps it through up to 15 missed frames, and
@@ -159,21 +159,21 @@ own, and `docs/calibration-block.md` says how.
 
 ## Command line
 
-`kinectctl` is built with the app, for checks and recordings:
+`dklink` is built with the app, for checks and recordings:
 
 ```sh
 swift build -c release
-.build/release/kinectctl list                 # attached cameras
-.build/release/kinectctl info                 # serial, firmware, sync jacks
-.build/release/kinectctl capture --mode nfov_unbinned --frames 30 --out /tmp/cap --raw
-.build/release/kinectctl record out.mkv --seconds 10 --color 720p
-.build/release/kinectctl play out.mkv
-.build/release/kinectctl bench --color 720p --imu
-.build/release/kinectctl firmware status
-.build/release/kinectctl reset                # after a crashed session left the IMU stuck
+.build/release/dklink list                 # attached cameras
+.build/release/dklink info                 # serial, firmware, sync jacks
+.build/release/dklink capture --mode nfov_unbinned --frames 30 --out /tmp/cap --raw
+.build/release/dklink record out.mkv --seconds 10 --color 720p
+.build/release/dklink play out.mkv
+.build/release/dklink bench --color 720p --imu
+.build/release/dklink firmware status
+.build/release/dklink reset                # after a crashed session left the IMU stuck
 ```
 
-`kinectctl` alone lists every command.
+`dklink` alone lists every command.
 
 ## Building and testing
 
@@ -183,7 +183,7 @@ toolchain download is needed.
 ```sh
 swift build
 swift test                                            # no camera needed
-KINECT_HW_TESTS=1 swift test --filter HardwareTests   # with a camera attached
+DKLINK_HW_TESTS=1 swift test --filter HardwareTests   # with a camera attached
 ```
 
 The hardware-free suite covers the frame format, the calibration block, the
@@ -196,17 +196,17 @@ and runs the tracker live.
 
 ```
 Sources/CLibusb      libusb 1.0.29, Darwin backend (LGPL 2.1)
-Sources/KinectCore   the k4a API in C: OpenK4A's protocol, frame format,
+Sources/DKCore       the k4a API in C: OpenK4A's protocol, frame format,
                      decoder, calibration and transforms (MIT), plus the
                      macOS layer: libusb transport, colour over AVFoundation,
                      UVC controls, IMU, Metal decoder, calibration block,
                      k4arecord, firmware
 Sources/Syphon       Syphon's Metal server and client (BSD)
-Sources/KinectKit    Swift: device, session, GPU packing and transforms,
+Sources/DKKit        Swift: device, session, GPU packing and transforms,
                      Syphon, body tracking, OSC, the frame server
-Sources/KinectTD     the library the TouchDesigner operators link
-Sources/KinectApp    the menu bar app
-Sources/kinectctl    the command-line tool
+Sources/DKLinkTD     the library the TouchDesigner operators link
+Sources/DKLinkApp    the menu bar app
+Sources/dklink       the command-line tool
 touchdesigner/       the operators, and the Syphon component and GLSL
 oracle/              Microsoft's engine in a container, as the reference
 docs/                the depth guide and the calibration block layout
@@ -220,8 +220,15 @@ as Metal kernels, bit-identical to the CPU pass that stays as the reference.
 
 ## Licence
 
-MIT. Third-party notices: `Sources/KinectCore/openk4a/LICENSE.OpenK4A`,
+MIT. Third-party notices: `Sources/DKCore/openk4a/LICENSE.OpenK4A`,
 `Sources/CLibusb/LICENSE.libusb`, `Sources/Syphon/LICENSE.Syphon`.
 Microsoft's Azure Kinect Sensor SDK headers (MIT) are reproduced under
-`Sources/KinectCore/include/k4a`. Microsoft's depth engine is not used and
+`Sources/DKCore/include/k4a`. Microsoft's depth engine is not used and
 nothing here is derived from it.
+
+## Trademarks
+
+DK Link is an independent project, not affiliated with or endorsed by
+Microsoft or Derivative. Azure Kinect is a trademark of Microsoft
+Corporation; TouchDesigner is a trademark of Derivative Inc. The names are
+used only to say what this software works with.

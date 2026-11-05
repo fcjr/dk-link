@@ -299,7 +299,7 @@ accumulated value is kept as a negative zero and the pixel is invalid.
 
 How the law was measured: a WFOV unbinned frame and a WFOV 2x2 binned frame
 of the same still scene were captured seconds apart (the mode table's
-layouts are in `openk4a_frame.c`; `kinectctl decode` writes the planes).
+layouts are in `openk4a_frame.c`; `dklink decode` writes the planes).
 The binned frame's 12-bit taps are known to be right, so every candidate law
 was scored by the correlation between the unbinned plane, summed 2x2, and
 the binned plane, tap by tap. Treating the bytes as samples gave no
@@ -307,7 +307,7 @@ correlation under any law; accumulating them down the columns under the
 law above gives 0.997, and the de-aliased phases then agree with the binned
 frame's and with the engine's. No large fixture was added for this: the
 engine's own IR and depth for the fixture frame (Fixtures/oracle) are the
-recorded check, and `Tests/KinectCoreTests/WfovUnbinnedTests.swift` holds
+recorded check, and `Tests/DKCoreTests/WfovUnbinnedTests.swift` holds
 the law's shape (monotone, sign-symmetric, 0x80 is zero).
 
 The mode decodes on its own 1024x1024 grid with the block's mode-5 P0,
@@ -344,7 +344,7 @@ With all of the above, on the fixture frames against the engine:
 
 Precision is the share of our valid pixels the engine also keeps, recall the
 share of the engine's we keep. `oracle/compare.py` prints these from a
-`kinectctl decode` PGM and an `oracle/run.sh` output.
+`dklink decode` PGM and an `oracle/run.sh` output.
 
 What still differs is a ±5 mm bias that steps with the de-alias table
 entry (the same profile in both WFOV modes, a different one in NFOV). It is
@@ -367,7 +367,7 @@ decoder's radialToZ table is built from.
 
 `oracle/warmup.sh` records NFOV unbinned and WFOV 2x2 binned frames every two
 minutes while the camera streams for half an hour; `oracle/run.sh` gives the
-engine's answer for each, `kinectctl decode --block --calibration` ours, and
+engine's answer for each, `dklink decode --block --calibration` ours, and
 `oracle/tempdiff.py` the per-pixel change of (ours − engine) between two
 frames of the same scene, which cancels the scene and leaves only what moves
 with temperature. On this camera the laser went from 29.5 to 35.1 °C (the
@@ -476,7 +476,7 @@ and the illuminator-baseline terms by 10) so rounding is not either:
   engine uses the block's own intrinsics for its radial-to-Z map, and the two
   maps differ by up to 15 mm at 5-7 m in a range- and column-structured way
   that looked like a decoder error. Against the engine run as the SDK runs it
-  (`kinectctl camera-calibration calibration.json out.bin --raw`, passed as
+  (`dklink camera-calibration calibration.json out.bin --raw`, passed as
   run.sh's fourth argument; the fixture copy is
   `Fixtures/depth_camera_calibration.bin`) our Z is flat across range in
   every mode. The parity fixtures under `Fixtures/oracle/` are now those.

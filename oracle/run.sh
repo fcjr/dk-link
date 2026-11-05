@@ -2,8 +2,8 @@
 # oracle/run.sh <mode> <frame.raw> <out-prefix under the repo> [camera-calibration.bin]
 # Uses the fixture calibration block. Writes <out-prefix>.depth.u16, .ir.u16 and
 # .info.txt from Microsoft's engine. Pass the depth camera's calibration as the
-# SDK does (kinectctl camera-calibration calibration.json out.bin --raw; the
-# fixture copy is Tests/KinectCoreTests/Fixtures/depth_camera_calibration.bin):
+# SDK does (dklink camera-calibration calibration.json out.bin --raw; the
+# fixture copy is Tests/DKCoreTests/Fixtures/depth_camera_calibration.bin):
 # without it the engine falls back to the block's own intrinsics and its Z
 # differs from the SDK's by up to 15 mm at range. ORACLE_OUTPUT=radial gives
 # the radial distance instead of Z.
@@ -28,7 +28,7 @@ OUTDIR="$(cd "$(dirname "$OUT")" && pwd)"
 docker run --rm --platform linux/arm64 --entrypoint sh \
   -e ORACLE_OUTPUT="${ORACLE_OUTPUT:-z}" $CAMMOUNT \
   -v "$RAW:/in/frame.raw:ro" \
-  -v "$(pwd)/Tests/KinectCoreTests/Fixtures/calibration_block.bin:/in/block.bin:ro" \
+  -v "$(pwd)/Tests/DKCoreTests/Fixtures/calibration_block.bin:/in/block.bin:ro" \
   -v "$OUTDIR:/out" \
   k4a-oracle -c 'Xvfb :99 -screen 0 1280x1024x24 +extension GLX -nolisten tcp >/dev/null 2>&1 & sleep 2; DISPLAY=:99 exec timeout 600 /oracle/oracle "$@"' sh \
   "$MODE" /in/block.bin /in/frame.raw "/out/$(basename "$OUT")" $CAMARG

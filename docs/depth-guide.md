@@ -2,7 +2,7 @@
 
 ## What the camera measures
 
-The Kinect shines infrared light at the scene and times how long it takes to
+The camera shines infrared light at the scene and times how long it takes to
 come back, pixel by pixel. The result is a **depth image**: one distance per
 pixel, from the camera to whatever that pixel is looking at. A value of **0
 means "no reading"** for that pixel, not "zero distance".

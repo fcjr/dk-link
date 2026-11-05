@@ -1,0 +1,165 @@
+import XCTest
+@testable import DKKit
+import DKCore
+
+/// Tests that need an Azure Kinect plugged in. They run only when
+/// DKLINK_HW_TESTS=1 is set, so the ordinary suite stays hardware-free:
+///
+///     DKLINK_HW_TESTS=1 swift test --filter HardwareTests
+final class HardwareTests: XCTestCase {
+    override func setUpWithError() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["DKLINK_HW_TESTS"] == "1", "set DKLINK_HW_TESTS=1 to run against a camera")
+        try XCTSkipUnless(DKDevice.installedCount > 0, "no Azure Kinect attached")
+    }
+
+    func testOpenReportsIdentity() throws {
+        let device = try DKDevice()
+        XCTAssertEqual(device.serialNumber.count, 12, "serial \(device.serialNumber)")
+        let firmware = try XCTUnwrap(device.firmwareVersion)
+        XCTAssertTrue(firmware.depth.hasPrefix("1."), firmware.description)
+        let calibration = try XCTUnwrap(device.rawCalibration)
+        XCTAssertTrue(String(decoding: calibration, as: UTF8.self).contains("CalibrationInformation"))
+    }
+
+    func testDepthAndColorStreamAtRate() throws {
+        let device = try DKDevice()
+        let configuration = DKConfiguration(depthMode: .nfovUnbinned, colorResolution: .p720, frameRate: .fps30)
+        let session = try DKSession(device: device, configuration: configuration)
+        XCTAssertEqual(session.calibration.depth_camera_calibration.resolution_width, 640)
+
+        let lock = NSLock()
+        var captures: [DKCapture] = []
+        var imuSamples = 0
+        session.onCapture = { capture in
+            lock.lock(); captures.append(capture); lock.unlock()
+        }
+        session.onIMU = { _ in lock.lock(); imuSamples += 1; lock.unlock() }
+        try session.start(imu: true)
+        let deadline = Date().addingTimeInterval(4)
+        while Date() < deadline {
+            lock.lock(); let count = captures.count; lock.unlock()
+            if count >= 45 { break }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        session.stop()
+
+        lock.lock(); let got = captures; let imu = imuSamples; lock.unlock()
+        XCTAssertGreaterThanOrEqual(got.count, 30, "fewer than 30 captures in 4 s")
+        XCTAssertGreaterThan(imu, 500, "the IMU should run at over 1 kHz")
+
+        // Depth frames arrive ~33 ms apart on the device clock, in order.
+        var previous: Int64 = 0
+        var withColor = 0
+        let timestamps = got.map { Int64($0.depth?.deviceTimestampMicroseconds ?? 0) }
+        for capture in got {
+            let depth = try XCTUnwrap(capture.depth)
+            XCTAssertEqual(depth.width, 640)
+            XCTAssertEqual(depth.height, 576)
+            XCTAssertNotNil(capture.ir)
+            let now = Int64(depth.deviceTimestampMicroseconds)
+            if previous != 0 {
+                let gap = now - previous
+                XCTAssertGreaterThan(gap, 25_000, "frames out of order or duplicated: \(timestamps)")
+                XCTAssertLessThan(gap, 120_000, "a gap of more than three frames: \(timestamps)")
+            }
+            previous = now
+            if let color = capture.color {
+                withColor += 1
+                XCTAssertEqual(color.width, 1280)
+                XCTAssertEqual(color.height, 720)
+                XCTAssertEqual(color.format, .bgra32)
+                let skew = Int64(color.deviceTimestampMicroseconds) - Int64(depth.deviceTimestampMicroseconds)
+                XCTAssertLessThan(abs(skew), 70_000, "colour paired more than two frames from depth")
+            }
+        }
+        XCTAssertGreaterThan(withColor, got.count / 2, "most captures should carry a colour frame")
+    }
+
+    func testColorControlsRoundTrip() throws {
+        let device = try DKDevice()
+        try device.start(DKConfiguration(depthMode: .off, colorResolution: .p720, frameRate: .fps30))
+        defer { device.stop() }
+        let caps = try XCTUnwrap(device.capabilities(of: .brightness))
+        let before = try XCTUnwrap(device.value(of: .brightness))
+        let target = before.value == caps.minimum ? caps.minimum + caps.step : caps.minimum
+        try device.set(.brightness, ColorControlValue(isAuto: false, value: target))
+        XCTAssertEqual(device.value(of: .brightness)?.value, target)
+        try device.set(.brightness, before)
+        XCTAssertEqual(device.value(of: .brightness)?.value, before.value)
+
+        let exposure = try XCTUnwrap(device.capabilities(of: .exposure))
+        XCTAssertTrue(exposure.supportsAuto)
+        XCTAssertGreaterThan(exposure.maximum, exposure.minimum)
+    }
+
+    /// Every depth mode in turn on one open device, the way the app switches
+    /// them from the menu: the planes and the model must follow the mode.
+    func testModeChangesOnOneOpenDevice() throws {
+        let device = try DKDevice()
+        let pipeline = try XCTUnwrap(OutputPipeline())
+        let order: [DepthMode] = [.nfovUnbinned, .wfovUnbinned, .nfovBinned, .wfovBinned, .passiveIR, .nfovUnbinned]
+        for mode in order {
+            let configuration = DKConfiguration(depthMode: mode, colorResolution: .p720, frameRate: .fps30)
+            pipeline.setCalibration(try device.calibration(for: configuration))
+            try device.start(configuration)
+            var seen = 0
+            var validDepth = 0.0
+            for _ in 0..<120 {
+                guard let capture = try device.capture(timeoutMilliseconds: 500) else { continue }
+                let ir = try XCTUnwrap(capture.ir)
+                XCTAssertEqual(ir.width, mode.size.width, "\(mode)")
+                XCTAssertEqual(ir.height, mode.size.height, "\(mode)")
+                if mode.hasDepth {
+                    let depth = try XCTUnwrap(capture.depth)
+                    XCTAssertEqual(depth.width, mode.size.width, "\(mode)")
+                    validDepth = depth.withUInt16 { Double($0.filter { $0 != 0 }.count) / Double($0.count) }
+                } else {
+                    XCTAssertNil(capture.depth)
+                }
+                pipeline.process(capture)
+                seen += 1
+                if seen == 8 { break }
+            }
+            device.stop()
+            XCTAssertEqual(seen, 8, "\(mode) did not deliver frames")
+            if mode.hasDepth {
+                XCTAssertGreaterThan(validDepth, 0.1, "\(mode) depth is mostly empty")
+            }
+        }
+    }
+}
+
+final class BodyTrackingHardwareTests: XCTestCase {
+    override func setUpWithError() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["DKLINK_HW_TESTS"] == "1", "set DKLINK_HW_TESTS=1 to run against a camera")
+        try XCTSkipUnless(DKDevice.installedCount > 0, "no Azure Kinect attached")
+    }
+
+    func testTrackerRunsOnLiveCaptures() throws {
+        let device = try DKDevice()
+        let configuration = DKConfiguration(depthMode: .nfovUnbinned, colorResolution: .p720, frameRate: .fps30)
+        let calibration = try device.calibration(for: configuration)
+        let tracker = BodyTracker(calibration: calibration)
+        try device.start(configuration)
+        defer { device.stop() }
+        var frames = 0, withBodies = 0, lifted = 0, joints = 0
+        var totalMs = 0.0
+        for _ in 0..<60 where frames < 10 {
+            guard let capture = try device.capture(timeoutMilliseconds: 500), let color = capture.color, capture.depth != nil else { continue }
+            frames += 1
+            let started = Date()
+            let bodies = tracker.track(color: color, depth: capture.depth, timestamp: capture.deviceTimestampMicroseconds)
+            totalMs += Date().timeIntervalSince(started) * 1000
+            if !bodies.isEmpty { withBodies += 1 }
+            for body in bodies {
+                for joint in body.joints {
+                    joints += 1
+                    XCTAssertTrue(joint.colorPixel.x >= 0 && joint.colorPixel.x <= 1280 && joint.colorPixel.y >= 0 && joint.colorPixel.y <= 720)
+                    if let p = joint.position { lifted += 1; XCTAssertGreaterThan(p.z, 100); XCTAssertLessThan(p.z, 14000) }
+                }
+            }
+        }
+        XCTAssertEqual(frames, 10)
+        print("body tracking: \(frames) frames, \(withBodies) with a body, \(joints) joints, \(lifted) lifted to 3D, \(totalMs / Double(frames)) ms/frame")
+    }
+}

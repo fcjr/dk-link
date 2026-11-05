@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds Kinect for Mac.app from the SwiftPM release build.
+# Builds DK Link.app from the SwiftPM release build.
 #   scripts/bundle.sh [--sign "Developer ID Application: ..."] [--out dir] [--dmg]
 # With --sign and --notarize <keychain-profile>, the DMG is notarized and stapled.
 set -eu
@@ -19,13 +19,13 @@ while [ $# -gt 0 ]; do
 done
 VERSION="$(cat VERSION 2>/dev/null || echo 0.1.0)"
 STAMP="$VERSION+$(git rev-parse --short HEAD 2>/dev/null || echo local)"
-swift build -c release --product KinectApp
-swift build -c release --product KinectTD
+swift build -c release --product DKLinkApp
+swift build -c release --product DKLinkTD
 BIN="$(swift build -c release --show-bin-path)"
-APP="$OUT/Kinect for Mac.app"
+APP="$OUT/DK Link.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN/KinectApp" "$APP/Contents/MacOS/Kinect for Mac"
+cp "$BIN/DKLinkApp" "$APP/Contents/MacOS/DK Link"
 # SwiftPM resource bundles the app loads at run time.
 for bundle in "$BIN"/*.bundle; do
   case "$bundle" in *Tests.bundle) continue ;; esac
@@ -36,19 +36,19 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Kinect for Mac</string>
-  <key>CFBundleDisplayName</key><string>Kinect for Mac</string>
-  <key>CFBundleIdentifier</key><string>com.frankchiarulli.kinect-for-mac</string>
+  <key>CFBundleName</key><string>DK Link</string>
+  <key>CFBundleDisplayName</key><string>DK Link</string>
+  <key>CFBundleIdentifier</key><string>com.frankchiarulli.dklink</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleExecutable</key><string>Kinect for Mac</string>
+  <key>CFBundleExecutable</key><string>DK Link</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.video</string>
-  <key>NSCameraUsageDescription</key><string>Kinect for Mac reads the Azure Kinect's colour camera.</string>
-  <key>NSHumanReadableCopyright</key><string>MIT License</string>
+  <key>NSCameraUsageDescription</key><string>DK Link reads the Azure Kinect's colour camera.</string>
+  <key>NSHumanReadableCopyright</key><string>MIT License. Not affiliated with Microsoft; Azure Kinect is a trademark of Microsoft Corporation.</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>
@@ -57,8 +57,8 @@ PLIST
 # The TouchDesigner plugins ride inside the app (Contents/PlugIns, a code
 # location, so --deep signing covers them); the app installs them from there.
 mkdir -p "$APP/Contents/PlugIns/TouchDesigner"
-touchdesigner/plugin/build.sh --lib "$BIN/libKinectTD.dylib" --out "$(cd "$APP/Contents/PlugIns/TouchDesigner" && pwd)" --stamp "$STAMP" >/dev/null
-[ -f "$APP/Contents/PlugIns/TouchDesigner/Kinect Azure/VERSION" ] || { echo "TouchDesigner plugin did not build" >&2; exit 1; }
+touchdesigner/plugin/build.sh --lib "$BIN/libDKLinkTD.dylib" --out "$(cd "$APP/Contents/PlugIns/TouchDesigner" && pwd)" --stamp "$STAMP" >/dev/null
+[ -f "$APP/Contents/PlugIns/TouchDesigner/DK Link/VERSION" ] || { echo "TouchDesigner plugin did not build" >&2; exit 1; }
 cat > "$OUT/entitlements.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -76,13 +76,13 @@ else
 fi
 echo "built $APP"
 if [ "$DMG" = 1 ]; then
-  DMGPATH="$OUT/Kinect-for-Mac-$VERSION.dmg"
+  DMGPATH="$OUT/DK-Link-$VERSION.dmg"
   STAGE="$OUT/dmg-stage"
   rm -rf "$STAGE" "$DMGPATH"
   mkdir -p "$STAGE"
   cp -R "$APP" "$STAGE/"
   ln -s /Applications "$STAGE/Applications"
-  hdiutil create -volname "Kinect for Mac" -srcfolder "$STAGE" -ov -format UDZO "$DMGPATH" >/dev/null
+  hdiutil create -volname "DK Link" -srcfolder "$STAGE" -ov -format UDZO "$DMGPATH" >/dev/null
   rm -rf "$STAGE"
   if [ -n "$SIGN" ]; then
     codesign --force --timestamp --sign "$SIGN" "$DMGPATH"

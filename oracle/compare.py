@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compares a decoded depth plane (PGM from kinectctl decode) with the oracle's
+"""Compares a decoded depth plane (PGM from dklink decode) with the oracle's
 (raw u16 from oracle/run.sh): validity agreement, error statistics by range,
 and a histogram. Usage: compare.py ours.depth.pgm oracle.depth.u16 [width height]"""
 import struct, sys
