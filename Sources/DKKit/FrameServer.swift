@@ -62,6 +62,8 @@ public final class FrameServer: @unchecked Sendable {
             lock.lock(); let go = accepting; lock.unlock()
             if !go { if client >= 0 { close(client) }; break }
             guard client >= 0 else { continue }
+            var on: Int32 = 1
+            setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
             let c = Client(fd: client, server: self)
             lock.lock(); clients.append(c); let n = clients.count; lock.unlock()
             onClientsChanged?(n)

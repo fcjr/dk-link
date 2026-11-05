@@ -5,14 +5,15 @@ import DKCore
 final class OSCTests: XCTestCase {
     func testMessageEncoding() {
         let packet = OSC.message("/dk/bodies", [.int(2), .float(1.5), .string("hi")])
-        // "/dk/bodies\0\0" (16) + ",ifs\0\0\0\0" (8) + int (4) + float (4) + "hi\0\0" (4)
-        XCTAssertEqual(packet.count, 36)
-        XCTAssertEqual(Array(packet.prefix(14)), Array("/dk/bodies".utf8))
-        XCTAssertEqual(packet[14], 0); XCTAssertEqual(packet[15], 0)
-        XCTAssertEqual(Array(packet[16..<20]), Array(",ifs".utf8))
-        XCTAssertEqual(Array(packet[24..<28]), [0, 0, 0, 2])
-        XCTAssertEqual(Array(packet[28..<32]), [0x3F, 0xC0, 0, 0]) // 1.5f big-endian
-        XCTAssertEqual(Array(packet[32..<36]), Array("hi".utf8) + [0, 0])
+        // "/dk/bodies\0\0" (12) + ",ifs\0\0\0\0" (8) + int (4) + float (4) + "hi\0\0" (4)
+        XCTAssertEqual(packet.count, 32)
+        XCTAssertEqual(Array(packet.prefix(10)), Array("/dk/bodies".utf8))
+        XCTAssertEqual(packet[10], 0); XCTAssertEqual(packet[11], 0)
+        XCTAssertEqual(Array(packet[12..<16]), Array(",ifs".utf8))
+        XCTAssertEqual(Array(packet[16..<20]), [0, 0, 0, 0])
+        XCTAssertEqual(Array(packet[20..<24]), [0, 0, 0, 2])
+        XCTAssertEqual(Array(packet[24..<28]), [0x3F, 0xC0, 0, 0]) // 1.5f big-endian
+        XCTAssertEqual(Array(packet[28..<32]), Array("hi".utf8) + [0, 0])
     }
 
     func testBundleEncoding() {
