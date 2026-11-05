@@ -23,7 +23,7 @@ final class RecordTests: XCTestCase {
         var handle: k4a_image_t? = nil
         XCTAssertEqual(k4a_image_create(format, width, height, width * 2, &handle), K4A_RESULT_SUCCEEDED)
         let out = k4a_image_get_buffer(handle)!
-        data.withUnsafeBytes { bytes in
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
             for i in 0..<Int(width * height) {
                 let high: UInt8 = bytes[cursor + 2 * i]; let low: UInt8 = bytes[cursor + 2 * i + 1]; let value = UInt16(high) << 8 | UInt16(low)
                 out[2 * i] = UInt8(value & 0xFF); out[2 * i + 1] = UInt8(value >> 8)

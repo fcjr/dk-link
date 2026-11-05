@@ -100,7 +100,7 @@ final class FrameServerTests: XCTestCase {
         let depth = PipelineTests.fixtureDepth()
         let json = PipelineTests.fixture("calibration.json")
         var text = [CChar](repeating: 0, count: json.count + 1)
-        json.withUnsafeBytes { b in for i in 0..<json.count { text[i] = CChar(bitPattern: b[i]) } }
+        json.withUnsafeBytes { (b: UnsafeRawBufferPointer) in for i in 0..<json.count { text[i] = CChar(bitPattern: b[i]) } }
         var calibration = k4a_calibration_t()
         _ = k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration)
         let producer = FrameProducer(calibration: calibration, transformation: MetalTransformation(calibration: calibration))

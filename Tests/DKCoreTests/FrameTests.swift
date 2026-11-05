@@ -28,7 +28,7 @@ final class FrameTests: XCTestCase {
         XCTAssertEqual(token(), "65535")
         cursor += 1
         var pixels = [UInt16](repeating: 0, count: width * height)
-        data.withUnsafeBytes { bytes in
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
             for i in 0..<(width * height) {
                 pixels[i] = UInt16(bytes[cursor + 2 * i]) << 8 | UInt16(bytes[cursor + 2 * i + 1])
             }
@@ -141,7 +141,7 @@ final class FrameTests: XCTestCase {
 
         // And through the public API, denormalized to a mode.
         var mutable = [CChar](repeating: 0, count: json.count + 1)
-        json.withUnsafeBytes { bytes in
+        json.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
             for i in 0..<json.count { mutable[i] = CChar(bitPattern: bytes[i]) }
         }
         var k4a = k4a_calibration_t()

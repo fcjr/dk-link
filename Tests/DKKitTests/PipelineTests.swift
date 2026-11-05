@@ -165,7 +165,7 @@ final class XYTableTests: XCTestCase {
         guard let textures = FrameTextures() else { throw XCTSkip("no Metal device") }
         let json = PipelineTests.fixture("calibration.json")
         var text = [CChar](repeating: 0, count: json.count + 1)
-        json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+        json.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
         var calibration = k4a_calibration_t()
         XCTAssertEqual(k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration), K4A_RESULT_SUCCEEDED)
         let table = try XCTUnwrap(textures.xyTableTexture(calibration: calibration, key: "test"))

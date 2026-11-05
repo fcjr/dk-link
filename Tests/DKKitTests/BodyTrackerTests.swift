@@ -36,7 +36,7 @@ final class BodyTrackerTests: XCTestCase {
     func testTrackingRunsOnAFrameWithoutAPerson() throws {
         let json = PipelineTests.fixture("calibration.json")
         var text = [CChar](repeating: 0, count: json.count + 1)
-        json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+        json.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
         var calibration = k4a_calibration_t()
         XCTAssertEqual(k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration), K4A_RESULT_SUCCEEDED)
         let tracker = BodyTracker(calibration: calibration)
@@ -68,7 +68,7 @@ final class BodyTrackerFrameTests: XCTestCase {
         data.withUnsafeBytes { memcpy(color.bytes.baseAddress!, $0.baseAddress!, min($0.count, color.byteCount)) }
         let json = PipelineTests.fixture("calibration.json")
         var text = [CChar](repeating: 0, count: json.count + 1)
-        json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+        json.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
         var calibration = k4a_calibration_t()
         _ = k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration)
         let bodies = BodyTracker(calibration: calibration).track(color: color, depth: nil, timestamp: 0)
@@ -82,7 +82,7 @@ final class BodyIDTests: XCTestCase {
     func testIDsFollowPeopleAcrossFrames() throws {
         let json = PipelineTests.fixture("calibration.json")
         var text = [CChar](repeating: 0, count: json.count + 1)
-        json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+        json.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
         var calibration = k4a_calibration_t()
         _ = k4a_calibration_get_from_raw(&text, text.count, K4A_DEPTH_MODE_NFOV_UNBINNED, K4A_COLOR_RESOLUTION_720P, &calibration)
         let tracker = BodyTracker(calibration: calibration)
