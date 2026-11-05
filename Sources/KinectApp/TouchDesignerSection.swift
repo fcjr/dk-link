@@ -72,10 +72,10 @@ struct TouchDesignerSection: View {
                 }
             }
             if let message = td.message {
-                Text(message).font(.caption).foregroundStyle(.secondary)
-            } else if td.touchDesignerRunning, model.frameClientCount == 0, case .installed = td.state {
-                Text("Add a Kinect Azure (Mac) TOP in TouchDesigner; restart it if the operators are missing.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(message).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            } else if case .installed = td.state, model.frameClientCount == 0 {
+                Text("In TouchDesigner, add a Kinect Azure (Mac) TOP or CHOP. Restart it if they are missing.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if model.frameClientCount > 0 {
                 Text("\(model.frameClientCount) TouchDesigner client\(model.frameClientCount == 1 ? "" : "s") connected")

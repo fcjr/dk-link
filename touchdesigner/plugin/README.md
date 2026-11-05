@@ -13,17 +13,20 @@ transformation engine and Vision body tracking.
 
 ## Install
 
-1. Build: `touchdesigner/plugin/build.sh --install` (needs the library built
-   first: `swift build -c release --product KinectTD`; or `--stub` for a
-   synthetic test library without a camera).
-2. That copies the `Kinect Azure` folder to
-   `~/Library/Application Support/Derivative/TouchDesigner099/Plugins/`.
-   To install by hand, drag the folder there (or into a `Plugins` folder next
-   to your `.toe`). Keep the two bundles together: the CHOP links the
-   library inside the TOP's bundle, so they share one camera session.
-3. Start TouchDesigner. The first time a plugin loads it asks for permission
-   and records it in `Plugins/Plugins.json`; a rebuilt plugin asks again.
-4. Press Tab, Custom family: **Kinect Azure** (TOP) and **Kinect Azure** (CHOP).
+From the Kinect for Mac app: open its menu and click **Install** in the
+TouchDesigner section, then restart TouchDesigner if it was running. The
+app installs the `Kinect Azure` folder into
+`~/Library/Application Support/Derivative/TouchDesigner099/Plugins/` and
+offers **Update** when it carries a newer plugin. TouchDesigner asks once
+for permission to load it.
+
+Then press Tab in a network and look in the Custom family: **Kinect Azure
+(Mac)** TOP and CHOP.
+
+From source: `swift build -c release --product KinectTD`, then
+`touchdesigner/plugin/build.sh --install` (or `--stub` for a synthetic
+library that needs no camera). Keep the two bundles together: the CHOP links
+the library inside the TOP's bundle, so they share one camera session.
 
 ## Kinect Azure TOP
 

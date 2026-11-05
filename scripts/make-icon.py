@@ -1,62 +1,82 @@
 #!/usr/bin/env python3
-"""Draws the app icon (a depth-camera glyph) as PNGs and packs an .icns.
-No image libraries needed: pixels are written straight into PNG."""
-import math, os, struct, subprocess, sys, zlib
+"""The app icon: a depth image. A sphere seen by the depth camera, coloured
+by distance on the same ramp the app's colorized preview uses (warm near,
+cool far), over the far, dark end of the ramp. Writes Resources/AppIcon.icns
+and docs/icon.png. Needs numpy and macOS's sips/iconutil."""
+import os, subprocess, sys
+import numpy as np
 
-def png(path, size, pixel):
-    rows = []
-    for y in range(size):
-        row = bytearray([0])
-        for x in range(size):
-            row += bytes(pixel(x, y, size))
-        rows.append(bytes(row))
-    raw = b"".join(rows)
+def ramp(t):
+    """The preview's ramp: red, yellow, green, cyan, blue over t in 0..1."""
+    t = np.clip(t, 0, 1)
+    r = np.clip(1.5 - np.abs(4 * t - 1), 0, 1) * np.where(t < 0.5, 1.0, np.clip(2 - 4 * t, 0, 1))
+    g = np.clip(1.5 - np.abs(4 * t - 2), 0, 1)
+    b = np.clip(1.5 - np.abs(4 * t - 3), 0, 1)
+    return np.stack([r, g, b], axis=-1)
+
+def render(size, scale=4):
+    n = size * scale
+    y, x = np.mgrid[0:n, 0:n]
+    u = (x + 0.5) / n - 0.5
+    v = (y + 0.5) / n - 0.5
+
+    # macOS tile: a squircle.
+    tile = (np.abs(u) ** 5 + np.abs(v) ** 5) <= 0.5 ** 5
+
+    # The far field: the deep end of the ramp, darkened, dimmer toward the
+    # corners the way the real illuminator is.
+    rr = np.hypot(u, v)
+    far = ramp(np.full_like(u, 0.96)) * 0.30
+    far = far * (1 - 0.4 * np.clip(rr / 0.7, 0, 1) ** 2)[..., None]
+
+    # The sphere: nearest at its centre, so the ramp runs from its warm end
+    # at the centre to the cool end at the rim.
+    cx, cy, R = 0.0, 0.0, 0.34
+    d = np.hypot(u - cx, v - cy) / R
+    inside = d < 1
+    z = np.sqrt(np.clip(1 - d * d, 0, 1))
+    t = 0.02 + 0.86 * (1 - z) ** 0.75
+    sphere = ramp(t)
+    # Iso-distance contours, the quantisation steps of a depth map.
+    steps = 11.0
+    phase = (t * steps) % 1.0
+    contour = np.exp(-((np.minimum(phase, 1 - phase) * steps * R * n) ** 2) / (2 * (0.0035 * n) ** 2))
+    sphere = sphere * (1 - 0.55 * contour)[..., None]
+    rgb = np.where(inside[..., None], sphere, far)
+
+    # At the sphere's edge the camera loses the grazing pixels: a thin black
+    # ring of "no reading".
+    halo = (d >= 1) & (d < 1.035)
+    rgb = np.where(halo[..., None], 0.0, rgb)
+
+    rgb = np.clip(rgb, 0, 1)
+    a = tile.astype(np.float32)
+    img = np.concatenate([rgb * a[..., None], a[..., None]], axis=-1)
+    # Supersample down.
+    img = img.reshape(size, scale, size, scale, 4).mean(axis=(1, 3))
+    rgb, a = img[..., :3], img[..., 3:4]
+    rgb = np.where(a > 0, rgb / np.maximum(a, 1e-6), 0)
+    out = np.concatenate([rgb, a], axis=-1)
+    return (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)
+
+def write_png(path, pixels):
+    import struct, zlib
+    h, w, _ = pixels.shape
+    raw = b"".join(b"\x00" + pixels[r].tobytes() for r in range(h))
     def chunk(t, d): return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
     with open(path, "wb") as f:
-        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
                 + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
-
-def icon_pixel(x, y, size):
-    # Rounded dark tile, a wide camera body, a bright depth "ring" and a warm IR dot.
-    u, v = (x + 0.5) / size, (y + 0.5) / size
-    r = 0.22
-    def inside_rounded(u, v, r):
-        cx = min(max(u, r), 1 - r); cy = min(max(v, r), 1 - r)
-        return (u - cx) ** 2 + (v - cy) ** 2 <= r * r
-    if not inside_rounded(u, v, r):
-        return (0, 0, 0, 0)
-    # background gradient
-    g = 0.5 + 0.5 * (1 - v)
-    base = (int(18 + 20 * g), int(22 + 30 * g), int(36 + 50 * g), 255)
-    # camera body: a wide bar
-    if 0.18 <= u <= 0.82 and 0.40 <= v <= 0.62:
-        base = (54, 60, 72, 255)
-    # depth lens: concentric rings
-    d = math.hypot((u - 0.38) * 1.0, (v - 0.51) * 1.0)
-    if d < 0.085:
-        t = d / 0.085
-        ring = 0.5 + 0.5 * math.cos(t * math.pi * 4)
-        base = (int(40 + 60 * ring), int(140 + 90 * ring), int(220 + 30 * ring), 255)
-    # colour lens
-    d2 = math.hypot(u - 0.62, v - 0.51)
-    if d2 < 0.06:
-        base = (235, 240, 245, 255) if d2 > 0.045 else (30, 30, 36, 255)
-    # IR illuminator dot
-    d3 = math.hypot(u - 0.735, v - 0.51)
-    if d3 < 0.022:
-        base = (255, 120, 60, 255)
-    # a soft depth cone below, hinting at the field of view
-    if v > 0.62 and abs(u - 0.38) < (v - 0.62) * 1.1 and v < 0.92:
-        a = max(0.0, 1 - (v - 0.62) / 0.3)
-        base = (int(base[0] * (1 - 0.35 * a) + 80 * 0.35 * a), int(base[1] * (1 - 0.35 * a) + 180 * 0.35 * a), int(base[2] * (1 - 0.35 * a) + 240 * 0.35 * a), 255)
-    return base
 
 out = sys.argv[1] if len(sys.argv) > 1 else "Resources"
 iconset = os.path.join(out, "AppIcon.iconset")
 os.makedirs(iconset, exist_ok=True)
 for size in (16, 32, 64, 128, 256, 512, 1024):
-    png(os.path.join(iconset, f"icon_{size}x{size}.png"), size, icon_pixel)
-    if size <= 512:
-        png(os.path.join(iconset, f"icon_{size//2}x{size//2}@2x.png"), size, icon_pixel)
+    pixels = render(size)
+    write_png(os.path.join(iconset, f"icon_{size}x{size}.png"), pixels)
+    if size >= 32:
+        write_png(os.path.join(iconset, f"icon_{size//2}x{size//2}@2x.png"), pixels)
 subprocess.run(["iconutil", "-c", "icns", iconset, "-o", os.path.join(out, "AppIcon.icns")], check=True)
-print("wrote", os.path.join(out, "AppIcon.icns"))
+os.makedirs("docs", exist_ok=True)
+write_png(os.path.join("docs", "icon.png"), render(256))
+print("wrote", os.path.join(out, "AppIcon.icns"), "and docs/icon.png")

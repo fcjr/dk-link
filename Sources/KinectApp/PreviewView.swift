@@ -7,6 +7,9 @@ struct TexturePreview: NSViewRepresentable {
     let frames: PreviewFrames?
     let stream: SyphonOutput.Stream
     let device: MTLDevice?
+    /// Whether the camera is running; a stopped camera shows an empty pane,
+    /// never its last frame.
+    let live: Bool
 
     func makeCoordinator() -> Renderer { Renderer(device: device) }
 
@@ -19,17 +22,21 @@ struct TexturePreview: NSViewRepresentable {
         view.framebufferOnly = false
         context.coordinator.frames = frames
         context.coordinator.stream = stream
+        context.coordinator.live = live
         return view
     }
 
     func updateNSView(_ view: MTKView, context: Context) {
         context.coordinator.frames = frames
         context.coordinator.stream = stream
+        context.coordinator.live = live
+        if !live { view.draw() }
     }
 
     final class Renderer: NSObject, MTKViewDelegate {
         var frames: PreviewFrames?
         var stream: SyphonOutput.Stream = .color
+        var live = false
         private let queue: MTLCommandQueue?
         private var pipeline: MTLRenderPipelineState?
 
@@ -68,7 +75,7 @@ struct TexturePreview: NSViewRepresentable {
             guard let queue, let pipeline, let drawable = view.currentDrawable,
                   let pass = view.currentRenderPassDescriptor,
                   let commandBuffer = queue.makeCommandBuffer() else { return }
-            if let texture = frames?.texture(for: stream), let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) {
+            if live, let texture = frames?.texture(for: stream), let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) {
                 // Letterbox: scale the quad so the texture keeps its aspect.
                 let viewAspect = Float(view.drawableSize.width / max(view.drawableSize.height, 1))
                 let textureAspect = Float(texture.width) / Float(max(texture.height, 1))
@@ -128,7 +135,7 @@ struct PreviewWindow: View {
 
     private func pane(_ stream: SyphonOutput.Stream) -> some View {
         ZStack(alignment: .bottomLeading) {
-            TexturePreview(frames: model.previewFrames, stream: stream, device: model.metalDevice)
+            TexturePreview(frames: model.previewFrames, stream: stream, device: model.metalDevice, live: model.state.isRunning)
             if stream == .color, !model.bodies.isEmpty {
                 BodyOverlay(bodies: model.bodies, imageSize: model.configuration.colorResolution.size)
             }
@@ -153,7 +160,10 @@ struct PreviewWindow: View {
             if mode == .off { return "Depth is off in the menu" }
             if mode == .passiveIR { return "Infrared only has no depth; pick another depth mode" }
             if stream == .depth { return "Packed 16-bit: red high byte, green low byte, blue preview. Dark by design" }
-            if stream == .depthPreview { return "Warm is near, cool is far, black is no reading" }
+            if stream == .depthPreview {
+                if let range = DepthCopy.rangeText(mode) { return "Warm is near, cool is far, black is no reading. This mode reads \(range)" }
+                return "Warm is near, cool is far, black is no reading"
+            }
         case .ir where mode == .off:
             return "Depth is off in the menu"
         default:

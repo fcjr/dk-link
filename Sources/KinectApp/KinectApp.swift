@@ -11,7 +11,7 @@ struct KinectApp: App {
         MenuBarExtra {
             MenuView().environmentObject(model)
         } label: {
-            Image(systemName: model.state.isRunning ? "camera.metering.matrix" : "camera.metering.none")
+            MenuBarLabel(running: model.state.isRunning)
         }
         .menuBarExtraStyle(.window)
 
@@ -24,6 +24,24 @@ struct KinectApp: App {
             DepthGuideView().environmentObject(model)
         }
         .defaultSize(width: 640, height: 720)
+    }
+}
+
+/// The menu bar icon; also where launch flags that need a window run, since
+/// the label is the one view that exists as soon as the app does.
+struct MenuBarLabel: View {
+    let running: Bool
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image(systemName: running ? "camera.metering.matrix" : "camera.metering.none")
+            .onAppear {
+                // Hidden: open the preview at launch, for screenshots and tests.
+                if CommandLine.arguments.contains("--preview") {
+                    openWindow(id: "preview")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
     }
 }
 
