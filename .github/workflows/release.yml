@@ -75,8 +75,16 @@ jobs:
           mkdir -p "$RUNNER_TEMP/sparkle"
           curl -sfL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
             | tar -xJ -C "$RUNNER_TEMP/sparkle"
-          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$RUNNER_TEMP/sparkle/bin/sign_update" \
-            --ed-key-file - "dist/DK-Link-${version}.dmg" > "$RUNNER_TEMP/sparkle-attrs"
+          # sign_update writes errors to stdout and some of them echo the key,
+          # so its output is never printed; check the secret locally instead.
+          status=0
+          printf '%s\n' "$SPARKLE_PRIVATE_KEY" | "$RUNNER_TEMP/sparkle/bin/sign_update" \
+            --ed-key-file - "dist/DK-Link-${version}.dmg" > "$RUNNER_TEMP/sparkle-attrs" || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::sign_update failed (exit $status); output suppressed because it can contain the key"
+            rm -f "$RUNNER_TEMP/sparkle-attrs"
+            exit 1
+          fi
 
       - name: Create the GitHub release
         env:
