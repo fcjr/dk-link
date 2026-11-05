@@ -13,6 +13,13 @@ public struct BodyJoint: Sendable, Equatable {
     public var confidence: Float       // Vision's confidence, 0..1
     public var colorPixel: SIMD2<Float> // in the colour image
     public var position: SIMD3<Float>?  // mm, depth camera frame; nil when no depth behind the joint
+
+    public init(name: String, confidence: Float, colorPixel: SIMD2<Float>, position: SIMD3<Float>?) {
+        self.name = name
+        self.confidence = confidence
+        self.colorPixel = colorPixel
+        self.position = position
+    }
 }
 
 public struct Body: Sendable, Equatable {
@@ -27,6 +34,14 @@ public struct Body: Sendable, Equatable {
     /// person detector saw someone (partly out of frame, blurred): then the
     /// single joint is "center", the box centre lifted with depth.
     public var source: String
+
+    public init(index: Int, joints: [BodyJoint], deviceTimestampMicroseconds: UInt64, boundingBox: SIMD4<Float>?, source: String) {
+        self.index = index
+        self.joints = joints
+        self.deviceTimestampMicroseconds = deviceTimestampMicroseconds
+        self.boundingBox = boundingBox
+        self.source = source
+    }
 }
 
 public final class BodyTracker: @unchecked Sendable {

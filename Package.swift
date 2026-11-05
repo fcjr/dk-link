@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "KinectCore", targets: ["KinectCore"]),
         .library(name: "Syphon", targets: ["Syphon"]),
         .library(name: "KinectKit", targets: ["KinectKit"]),
+        .library(name: "KinectTD", type: .dynamic, targets: ["KinectTD"]),
         .executable(name: "kinectctl", targets: ["kinectctl"]),
         .executable(name: "KinectApp", targets: ["KinectApp"]),
     ],
@@ -77,6 +78,20 @@ let package = Package(
                 .linkedFramework("IOSurface"),
             ]
         ),
+        .target(
+            name: "CKinectTD",
+            path: "Sources/CKinectTD",
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "KinectTD",
+            dependencies: ["KinectKit", "KinectCore", "CKinectTD"],
+            path: "Sources/KinectTD",
+            linkerSettings: [
+                .linkedFramework("Metal"),
+                .linkedFramework("Vision"),
+            ]
+        ),
         .executableTarget(
             name: "KinectApp",
             dependencies: ["KinectKit"],
@@ -91,6 +106,11 @@ let package = Package(
             name: "kinectctl",
             dependencies: ["KinectCore", "Syphon"],
             path: "Sources/kinectctl"
+        ),
+        .testTarget(
+            name: "KinectTDTests",
+            dependencies: ["KinectTD", "CKinectTD"],
+            path: "Tests/KinectTDTests"
         ),
         .testTarget(
             name: "KinectKitTests",
