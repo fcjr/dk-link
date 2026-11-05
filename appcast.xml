@@ -10,5 +10,17 @@
     <link>https://raw.githubusercontent.com/fcjr/dk-link/main/appcast.xml</link>
     <description>Updates for DK Link</description>
     <language>en</language>
+    <item>
+      <title>0.1.0</title>
+      <sparkle:version>0.1.0</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/fcjr/dk-link/releases/tag/v0.1.0</sparkle:releaseNotesLink>
+      <pubDate>Thu, 05 Nov 2026 04:45:53 +0000</pubDate>
+      <enclosure
+        url="https://github.com/fcjr/dk-link/releases/download/v0.1.0/DK-Link-0.1.0.dmg"
+        sparkle:edSignature="eQtHqMhesG2h5EditEGBf9hw7NUPGwSsszp8KuaxF1gECOjGjUZelADFgkDJIZTaO53SjcbokfTuGgclQiR2AQ==" length="3375716"
+        type="application/octet-stream"/>
+    </item>
   </channel>
 </rss>
