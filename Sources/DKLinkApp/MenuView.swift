@@ -60,6 +60,7 @@ struct MenuView: View {
             }
             Divider()
             Toggle("Start when the camera is plugged in", isOn: $model.autoStart)
+            if LoginItem.isAvailable { LoginItemToggle() }
             HStack(alignment: .firstTextBaseline) {
                 Text(footer).font(.caption2).foregroundStyle(.tertiary)
                 Spacer()
