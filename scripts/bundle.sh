@@ -48,7 +48,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSUIElement</key><true/>
   <key>LSApplicationCategoryType</key><string>public.app-category.video</string>
   <key>NSCameraUsageDescription</key><string>DK Link reads the Azure Kinect's colour camera.</string>
-  <key>NSHumanReadableCopyright</key><string>MIT License. Not affiliated with Microsoft; Azure Kinect is a trademark of Microsoft Corporation.</string>
+  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Left Shift Logical, LLC. MIT License. Not affiliated with Microsoft; Azure Kinect is a trademark of Microsoft Corporation.</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>

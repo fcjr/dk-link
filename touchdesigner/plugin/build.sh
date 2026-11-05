@@ -72,7 +72,7 @@ bundle() {
   <key>CFBundleShortVersionString</key><string>$(cat "$ROOT/VERSION" 2>/dev/null || echo 0.1.0)</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>$MIN</string>
-  <key>NSHumanReadableCopyright</key><string>MIT License.</string>
+  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Left Shift Logical, LLC. MIT License.</string>
 </dict>
 </plist>
 PLIST

@@ -220,7 +220,7 @@ as Metal kernels, bit-identical to the CPU pass that stays as the reference.
 
 ## Licence
 
-MIT. Third-party notices: `Sources/DKCore/openk4a/LICENSE.OpenK4A`,
+MIT, copyright 2026 Left Shift Logical, LLC. Third-party notices: `Sources/DKCore/openk4a/LICENSE.OpenK4A`,
 `Sources/CLibusb/LICENSE.libusb`, `Sources/Syphon/LICENSE.Syphon`.
 Microsoft's Azure Kinect Sensor SDK headers (MIT) are reproduced under
 `Sources/DKCore/include/k4a`. Microsoft's depth engine is not used and
