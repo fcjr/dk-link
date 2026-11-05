@@ -119,8 +119,7 @@ let package = Package(
         .testTarget(
             name: "DKKitTests",
             dependencies: ["DKKit"],
-            path: "Tests/DKKitTests",
-            resources: [.copy("Fixtures")]
+            path: "Tests/DKKitTests"
         ),
         .testTarget(
             name: "DKCoreTests",

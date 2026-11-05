@@ -6,7 +6,9 @@ import Syphon
 
 final class PipelineTests: XCTestCase {
     static func fixture(_ name: String) -> Data {
-        let url = Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures")!
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../DKCoreTests/Fixtures/\(name)")
         return try! Data(contentsOf: url)
     }
 
