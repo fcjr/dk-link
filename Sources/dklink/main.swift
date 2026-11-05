@@ -507,7 +507,7 @@ case "camera-calibration":
     guard CommandLine.arguments.count > 3 else { usage() }
     let json = try! Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
     var text = [CChar](repeating: 0, count: json.count + 1)
-    json.withUnsafeBytes { bytes in for i in 0..<json.count { text[i] = CChar(bitPattern: bytes[i]) } }
+    for (i, byte) in json.enumerated() { text[i] = CChar(bitPattern: byte) }
     var calibration = k4a_calibration_t()
     guard k4a_calibration_get_from_raw(&text, text.count, depthMode(arg("--mode", "nfov_unbinned")!), colorResolution(arg("--color", "720p")!), &calibration) == K4A_RESULT_SUCCEEDED else { fail("calibration did not parse") }
     var camera = flag("--color-camera") ? calibration.color_camera_calibration : calibration.depth_camera_calibration
