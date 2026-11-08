@@ -11,6 +11,18 @@
     <description>Updates for DK Link</description>
     <language>en</language>
     <item>
+      <title>0.1.1</title>
+      <sparkle:version>0.1.1</sparkle:version>
+      <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/fcjr/dk-link/releases/tag/v0.1.1</sparkle:releaseNotesLink>
+      <pubDate>Sun, 08 Nov 2026 03:14:22 +0000</pubDate>
+      <enclosure
+        url="https://github.com/fcjr/dk-link/releases/download/v0.1.1/DK-Link-0.1.1.dmg"
+        sparkle:edSignature="svhxXENnVRXCD8vDgYr9reVX96QPN4oFgctIbIxgRmoJHu10MsvEryMEYRxK7ilez7bLganDt85A3pqU8VfOBg==" length="3384835"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>0.1.0</title>
       <sparkle:version>0.1.0</sparkle:version>
       <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
