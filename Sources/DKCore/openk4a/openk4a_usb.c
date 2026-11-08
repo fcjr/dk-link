@@ -240,7 +240,19 @@ static bool device_serial(libusb_device *device, char *out, size_t out_size)
         return false;
     }
     unsigned char serial[128];
-    const int got = libusb_get_string_descriptor_ascii(handle, descriptor.iSerialNumber, serial, sizeof(serial) - 1);
+    int got = libusb_get_string_descriptor_ascii(handle, descriptor.iSerialNumber, serial, sizeof(serial) - 1);
+    if (got == LIBUSB_ERROR_IO || got == LIBUSB_ERROR_TIMEOUT || got == LIBUSB_ERROR_PIPE)
+    {
+        /* A function left hung (seen on the depth processor after a session
+         * ended badly) stops answering even standard requests, and the camera
+         * has its own power supply, so replugging the cable does not clear it.
+         * A port reset does. */
+        openk4a_log(OPENK4A_LOG_WARNING, "045E:%04X is not responding; resetting its port", (unsigned)descriptor.idProduct);
+        if (libusb_reset_device(handle) == 0)
+        {
+            got = libusb_get_string_descriptor_ascii(handle, descriptor.iSerialNumber, serial, sizeof(serial) - 1);
+        }
+    }
     libusb_close(handle);
     if (got <= 0)
     {
