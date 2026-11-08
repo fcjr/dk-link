@@ -10,6 +10,7 @@ import DKCore
 final class AppModel: ObservableObject {
     enum State: Equatable {
         case noDevice
+        case slowLink
         case idle(serial: String)
         case starting
         case running(serial: String)
@@ -18,6 +19,7 @@ final class AppModel: ObservableObject {
         var label: String {
             switch self {
             case .noDevice: return "No Azure Kinect connected"
+            case .slowLink: return "Wrong cable: connected over USB 2"
             case .idle(let serial): return "Camera \(serial) ready"
             case .starting: return "Starting…"
             case .running(let serial): return "Streaming from \(serial)"
@@ -129,7 +131,7 @@ final class AppModel: ObservableObject {
                 state = .idle(serial: opened.serialNumber)
                 if autoStart { start() }
             } else {
-                state = .noDevice
+                state = DKDevice.installedCount > 0 && DKDevice.isOnSlowLink ? .slowLink : .noDevice
             }
         }
     }

@@ -228,6 +228,11 @@ bool openk4a_usb_open_serial(openk4a_usb_t *usb, const openk4a_usb_id_t *id, con
 uint32_t openk4a_usb_camera_count(void);
 bool openk4a_usb_camera_serial(uint32_t index, char *out, size_t out_size);
 
+/* True when a camera's depth or colour function is attached below USB 3
+ * (a USB 2 cable, port or hub). The depth processor then exposes only a UVC
+ * fallback, without the vendor interface the core needs. */
+bool openk4a_usb_slow_link(void);
+
 /* Hotplug: called on a background thread when a camera's depth function
  * arrives (serial read) or leaves (serial remembered from its arrival, or
  * "" when it was never seen). Subscribing reports the cameras already

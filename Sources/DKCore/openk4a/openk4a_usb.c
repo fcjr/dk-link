@@ -369,6 +369,34 @@ bool openk4a_usb_camera_serial(uint32_t index, char *out, size_t out_size)
     return true;
 }
 
+bool openk4a_usb_slow_link(void)
+{
+    libusb_context *context = openk4a_usb_context();
+    if (context == NULL)
+    {
+        return false;
+    }
+    libusb_device **list = NULL;
+    const ssize_t n = libusb_get_device_list(context, &list);
+    bool slow = false;
+    for (ssize_t i = 0; i < n && !slow; i++)
+    {
+        struct libusb_device_descriptor descriptor;
+        if (libusb_get_device_descriptor(list[i], &descriptor) != 0 || descriptor.idVendor != OPENK4A_USB_VID ||
+            (descriptor.idProduct != OPENK4A_USB_DEPTH.pid && descriptor.idProduct != OPENK4A_USB_COLOR.pid))
+        {
+            continue;
+        }
+        const int speed = libusb_get_device_speed(list[i]);
+        slow = speed != LIBUSB_SPEED_UNKNOWN && speed < LIBUSB_SPEED_SUPER;
+    }
+    if (n >= 0)
+    {
+        libusb_free_device_list(list, 1);
+    }
+    return slow;
+}
+
 static bool usb_open_device(openk4a_usb_t *usb, const openk4a_usb_id_t *id, libusb_device *device)
 {
     libusb_device_handle *handle = NULL;
@@ -385,7 +413,14 @@ static bool usb_open_device(openk4a_usb_t *usb, const openk4a_usb_id_t *id, libu
         !endpoint_present(device, interface_number, id->endpoint_in) ||
         !endpoint_present(device, interface_number, id->endpoint_stream))
     {
-        openk4a_log(OPENK4A_LOG_ERROR, "the expected endpoints are not on interface %d of 045E:%04X", interface_number, (unsigned)id->pid);
+        if (libusb_get_device_speed(device) < LIBUSB_SPEED_SUPER)
+        {
+            openk4a_log(OPENK4A_LOG_ERROR, "045E:%04X is connected over USB 2; the camera needs a USB 3 cable and port", (unsigned)id->pid);
+        }
+        else
+        {
+            openk4a_log(OPENK4A_LOG_ERROR, "the expected endpoints are not on interface %d of 045E:%04X", interface_number, (unsigned)id->pid);
+        }
         libusb_close(handle);
         libusb_unref_device(device);
         return false;

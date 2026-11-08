@@ -14,10 +14,14 @@ public final class DKDevice: @unchecked Sendable {
 
     public static var installedCount: Int { Int(k4a_device_get_installed_count()) }
 
+    /// A camera is attached below USB 3 (wrong cable, port or hub).
+    public static var isOnSlowLink: Bool { openk4a_usb_slow_link() }
+
     public init(index: Int = 0) throws {
         var handle: k4a_device_t? = nil
         guard k4a_device_open(UInt32(index), &handle) == K4A_RESULT_SUCCEEDED, let h = handle else {
-            throw DKDevice.installedCount == 0 ? DKError.noDevice : DKError.openFailed(index: index)
+            if DKDevice.installedCount == 0 { throw DKError.noDevice }
+            throw DKDevice.isOnSlowLink ? DKError.slowLink : DKError.openFailed(index: index)
         }
         self.handle = h
         self.index = index

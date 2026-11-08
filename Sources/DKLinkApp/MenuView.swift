@@ -80,6 +80,10 @@ struct MenuView: View {
                 Circle().fill(statusColor).frame(width: 9, height: 9)
                 Text(model.state.label).font(.headline).lineLimit(2)
             }
+            if model.state == .slowLink {
+                Text("Depth needs USB 3. Plug the camera straight into the Mac with a USB 3 cable (the one in the box works), not through a hub, and connect its power supply.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             if model.state.isRunning {
                 Text(String(format: "%.0f fps, %.1f ms per frame, sensor %.0f °C", model.statistics.capturesPerSecond,
                             model.processingMilliseconds, model.statistics.sensorTemperatureCelsius))
@@ -89,7 +93,7 @@ struct MenuView: View {
                 if model.state.isRunning {
                     Button("Stop") { model.stop() }
                 } else {
-                    Button("Start") { model.start() }.disabled({ if case .noDevice = model.state { return true } else { return false } }())
+                    Button("Start") { model.start() }.disabled(model.state == .noDevice || model.state == .slowLink)
                 }
                 Button("Preview…") { openWindow(id: "preview"); NSApp.activate(ignoringOtherApps: true) }
                 Spacer()
@@ -129,6 +133,7 @@ struct MenuView: View {
         case .running: return .green
         case .starting: return .yellow
         case .failed: return .red
+        case .slowLink: return .orange
         default: return .gray
         }
     }

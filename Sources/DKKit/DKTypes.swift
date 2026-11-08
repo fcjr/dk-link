@@ -4,6 +4,7 @@ import DKCore
 public enum DKError: Error, CustomStringConvertible {
     case noDevice
     case openFailed(index: Int)
+    case slowLink
     case startFailed(String)
     case captureFailed
     case imuFailed
@@ -14,6 +15,7 @@ public enum DKError: Error, CustomStringConvertible {
         switch self {
         case .noDevice: return "No Azure Kinect is connected"
         case .openFailed(let index): return "Azure Kinect #\(index) could not be opened (is another app using it?)"
+        case .slowLink: return "The Azure Kinect is connected over USB 2. It needs a USB 3 cable and port, plugged straight into the Mac, with its power supply connected."
         case .startFailed(let why): return "The cameras would not start: \(why)"
         case .captureFailed: return "Reading a capture failed"
         case .imuFailed: return "The IMU would not start"

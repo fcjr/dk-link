@@ -118,6 +118,9 @@ case "list":
             print("  [\(index)] (could not open)")
         }
     }
+    if openk4a_usb_slow_link() {
+        print("The camera is connected over USB 2. Depth needs a USB 3 cable and port, plugged straight into the Mac, with the power supply connected.")
+    }
 
 case "info":
     let device = openDevice()
